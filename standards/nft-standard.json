@@ -1,0 +1,133 @@
+{
+  "$id": "https://distordia.com/standards/nft.v1.json",
+  "title": "Distordia NFT Marketplace Standard",
+  "description": "Schema for NFT assets to be tokenized and traded on the Distordia on-chain marketplace.",
+  "version": "1.0.0",
+  "nexusFormat": "basic",
+  "maxSize": "1KB (system fields ~180 bytes, ~820 bytes available)",
+  "nexusFields": [
+    { "name": "distordia-type", "type": "string", "value": "nft", "mutable": false, "maxlength": 16 },
+    { "name": "status", "type": "string", "value": "active", "mutable": true, "maxlength": 12 },
+    { "name": "nft-name", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+    { "name": "description", "type": "string", "value": "", "mutable": true, "maxlength": 256 },
+    { "name": "image", "type": "string", "value": "", "mutable": false, "maxlength": 256 },
+    { "name": "category", "type": "string", "value": "art", "mutable": true, "maxlength": 24 },
+    { "name": "collection", "type": "string", "value": "", "mutable": true, "maxlength": 64 },
+    { "name": "creator", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+    { "name": "external_url", "type": "string", "value": "", "mutable": true, "maxlength": 128 }
+  ],
+  "fieldDefinitions": {
+    "distordia-type": {
+      "description": "Asset type identifier. Must be 'nft'.",
+      "enum": ["nft"]
+    },
+    "status": {
+      "description": "Lifecycle status of the NFT.",
+      "enum": ["active", "burned", "frozen"]
+    },
+    "nft-name": {
+      "description": "Display name of the NFT. Immutable once created.",
+      "pattern": "^.{1,64}$"
+    },
+    "description": {
+      "description": "Human-readable description of the artwork/collectible."
+    },
+    "image": {
+      "description": "Direct URL to the NFT image. Must be a publicly accessible HTTPS URL."
+    },
+    "category": {
+      "description": "Primary category for marketplace filtering.",
+      "enum": ["art", "photography", "music", "collectible", "gaming", "utility", "domain", "meme", "other"]
+    },
+    "collection": {
+      "description": "Collection name to group related NFTs."
+    },
+    "creator": {
+      "description": "Creator name, alias, or namespace. Establishes provenance."
+    },
+    "external_url": {
+      "description": "External link for additional context (artist portfolio, project page, etc.)."
+    }
+  },
+  "required": ["distordia-type", "nft-name", "image"],
+  "naming": {
+    "pattern": "nft-{slug}-{timestamp}",
+    "example": "nft-cosmic-dragon-1738857600000"
+  },
+  "tokenization": {
+    "description": "Two-step process to enable trading on the marketplace",
+    "steps": [
+      {
+        "step": 1,
+        "action": "Tokenize the asset",
+        "endpoint": "assets/tokenize/asset",
+        "cost": "~1 NXS"
+      },
+      {
+        "step": 2,
+        "action": "Create token for trading",
+        "endpoint": "tokens/create/token",
+        "cost": "~1 NXS"
+      }
+    ],
+    "totalCost": "~2 NXS"
+  },
+  "trading": {
+    "operations": {
+      "listForSale": {
+        "endpoint": "market/create/ask",
+        "description": "List NFT token for sale at a set NXS price"
+      },
+      "placeBuyOrder": {
+        "endpoint": "market/create/bid",
+        "description": "Place a buy order for a listed NFT"
+      },
+      "executeOrder": {
+        "endpoint": "market/execute/order",
+        "description": "Execute a matched buy/sell order"
+      },
+      "cancelOrder": {
+        "endpoint": "market/cancel/order",
+        "description": "Cancel an open order"
+      }
+    }
+  },
+  "examples": [
+    {
+      "_comment": "Full NFT with all fields",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "version": 1,
+      "created": 1755775754,
+      "modified": 1755775754,
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "nft",
+      "status": "active",
+      "nft-name": "Cosmic Dragon #42",
+      "description": "A rare cosmic dragon from the Distordia Originals collection",
+      "image": "https://images.example.com/cosmic-dragon-42.png",
+      "category": "art",
+      "collection": "Distordia Originals",
+      "creator": "ArtistAlpha",
+      "external_url": "https://portfolio.example.com/cosmic-dragon"
+    },
+    {
+      "_comment": "Minimal NFT with required fields only",
+      "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "nft",
+      "status": "active",
+      "nft-name": "Rare Gem",
+      "image": "https://images.example.com/rare-gem.png",
+      "category": "collectible"
+    }
+  ],
+  "nexus": {
+    "format": "basic",
+    "createCommand": "assets/create/asset name=nft-{slug}-{timestamp} type=nft status=active nft-name={name} image={url} ...",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilter": "distordia-type = 'nft'"
+  }
+}
