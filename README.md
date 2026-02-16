@@ -17,29 +17,30 @@ All web3 applications built by Distordia (and hopefully everyone else) follow th
   |                |             |                   |            |           |
   |   Namespace    |-- trust -->|  Content Verif.    |            |   Agent   |
   |  Attestation   |            |  Social Posts      |<-- owns --|  Registry |
-  |                |-- owns --> |  Product Masterdata|            |           |
-  |  (namespace-   |            |  NFT Marketplace   |            | (agent-   |
-  |   standard)    |            |  Fantasy Football  |            |  standard)|
-  |                |            |                    |            |           |
+  |                |-- owns --> |  Articles          |            |           |
+  |  (namespace-   |            |  Product Masterdata|            | (agent-   |
+  |   standard)    |            |  NFT Marketplace   |            |  standard)|
+  |                |            |  Fantasy Football  |            |           |
    ----------------              -------------------               -----------
          |                              |                              |
          |                              |                              |
          v                              v                              v
    +---------------------------------------------------------------------------+
-   |                    NEXUS BLOCKCHAIN (format=JSON)                          |
+   |                  NEXUS BLOCKCHAIN (format=JSON / raw)                     |
    |                                                                           |
    |  - 1 KB max asset size       - Typed fields (uint8..uint1024, string)     |
    |  - Immutable + mutable       - No nested objects or arrays                |
    |  - Namespace-scoped           - POST API at api.distordia.com             |
    +---------------------------------------------------------------------------+
-         |                              |                              |
-         v                              v                              v
-   +---------------------------------------------------------------------------+
-   |                         SWARM COORDINATION                                |
-   |                                                                           |
-   |    Swarm Registration  ------>  Mission Contracts  ------>  Escrow/Fees   |
-   |    (swarm-standard)             (swarm-mission)             (DIST token)  |
-   +---------------------------------------------------------------------------+
+         |                    |                              |
+         v                    v                              v
+   +-------------------------+   +-------------------------------------------------+
+   |    SWARM COORDINATION   |   |                 NEXGO P2P TRANSPORT              |
+   |                         |   |                                                 |
+   |  Swarm Registration     |   |  Taxi Registry -----> Ride Requests --> Ratings |
+   |  Mission Contracts      |   |  (nexgo-taxi)         (nexgo-ride)    (nexgo-   |
+   |  Escrow/Fees            |   |                       + Invoices API   rating)  |
+   +-------------------------+   +-------------------------------------------------+
 ```
 
 ---
@@ -56,8 +57,12 @@ All web3 applications built by Distordia (and hopefully everyone else) follow th
 | 6 | [Fantasy Football Players](#6-fantasy-football-players) | [`player-standard.json`](standards/player-standard.json) | `distordia.player.v1` | 30 | Player NFT cards with live stats |
 | 7 | [Agent Registration](#7-agent-registration) | [`agent-standard.json`](standards/agent-standard.json) | `agent` | 24 | AI agent identity and A2A trust |
 | 8 | [Swarm Coordination](#8-swarm-coordination) | [`swarm-standard.json`](standards/swarm-standard.json) | `swarm` / `swarm-mission` | 17 / 25 | Multi-agent orchestration and contracts |
+| 9 | [Articles](#9-articles) | [`article-standard.json`](standards/article-standard.json) | `distordia-article` / `distordia-article-chunk` | 10 / 4 | Long-form content via linked-list asset chains |
+| 10 | [NexGo Taxi](#10-nexgo-taxi) | [`nexgo-taxi-standard.json`](standards/nexgo-taxi-standard.json) | `nexgo-taxi` | 8 | P2P ride-hailing vehicle registry |
+| 11 | [NexGo Rating](#11-nexgo-rating) | [`nexgo-rating-standard.json`](standards/nexgo-rating-standard.json) | `nexgo-rating` | 2 (raw) | Passenger-to-driver rating system |
+| 12 | [NexGo Ride](#12-nexgo-ride) | [`nexgo-ride-standard.json`](standards/nexgo-ride-standard.json) | `nexgo-ride` | 8 (raw) | Contractual ride requests with invoice payment |
 
-**Total: 8 standards, 9 asset types, ~180 field definitions**
+**Total: 12 standards, 15 asset types, ~220 field definitions**
 
 ---
 
@@ -68,7 +73,7 @@ All Distordia assets live on the Nexus blockchain under these constraints:
 | Constraint | Value |
 |-----------|-------|
 | Maximum asset data size | **1 KB** |
-| Format | `JSON` (typed fields with mutability control) |
+| Format | `JSON` (typed fields with mutability control) or `raw` (opaque data blob) |
 | Supported types | `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, `bytes` |
 | Nested objects | Not supported on-chain |
 | Arrays | Not supported (use comma/pipe-separated strings) |
@@ -436,6 +441,176 @@ This standard defines two asset types:
 
 ---
 
+### 9. Articles
+
+> **File:** [`standards/article-standard.json`](standards/article-standard.json)
+> **Types:** `distordia-type: "distordia-article"` and `distordia-type: "distordia-article-chunk"`
+> **Purpose:** Long-form content that exceeds the 512-character post limit, stored as a linked-list chain of on-chain assets.
+
+Articles solve the 1KB register limit by splitting text across multiple assets. A root asset holds the title, metadata, and first text chunk, while continuation chunk assets carry subsequent text. Each asset points to the next via the `next` field, forming a singly-linked list. Chunks are created in reverse order so each can reference the address of the next one.
+
+**Root article (`distordia-article`):**
+
+| Field | Type | Mutable | Description |
+|-------|------|---------|-------------|
+| `title` | string | No | Article title (max 64 chars) |
+| `text` | string | No | First text chunk (max 384 chars) |
+| `distordia-status` | string | Yes | `official`, `deleted`, `hidden` |
+| `cw` | string | No | Content warning |
+| `reply-to` | string | No | Address of post/article being replied to |
+| `quote` | string | No | Address of post/article being quoted |
+| `tags` | string | No | Comma-separated hashtags |
+| `lang` | string | No | ISO 639-1 language code |
+| `next` | string | No | Address of first continuation chunk (empty if article fits in one asset) |
+
+**Continuation chunk (`distordia-article-chunk`):**
+
+| Field | Type | Mutable | Description |
+|-------|------|---------|-------------|
+| `text` | string | No | Text chunk (max 768 chars) |
+| `distordia-status` | string | Yes | `official`, `deleted`, `hidden` |
+| `next` | string | No | Address of next chunk (empty for last chunk) |
+
+**Chunking limits:**
+```
+  Root asset text:    384 characters  (metadata overhead uses remaining space)
+  Chunk asset text:   768 characters  (lean structure, more text per asset)
+  Max article length: 5,000 characters
+  Cost per asset:     1 NXS
+```
+
+**Example:**
+```json
+{
+  "distordia-type": "distordia-article",
+  "distordia-status": "official",
+  "title": "Introduction to Decentralized Identity",
+  "text": "Decentralized identity puts users in control of their digital presence...",
+  "tags": "identity,blockchain,web3",
+  "lang": "en",
+  "next": "a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7"
+}
+```
+
+---
+
+### 10. NexGo Taxi
+
+> **File:** [`standards/nexgo-taxi-standard.json`](standards/nexgo-taxi-standard.json)
+> **Type:** `distordia-type: "nexgo-taxi"`
+> **Purpose:** Decentralized vehicle registry for the NexGo P2P ride-hailing module. Drivers register vehicles and broadcast GPS positions on-chain.
+
+Each taxi is a JSON-format asset that drivers create and continuously update with their current GPS position and availability status. Passengers query available taxis in real-time through the Nexus register API.
+
+**Key fields:**
+
+| Field | Type | Mutable | Description |
+|-------|------|---------|-------------|
+| `vehicle-id` | string | Yes | License plate / vehicle identifier |
+| `vehicle-type` | string | Yes | `sedan`, `suv`, `van`, `luxury` |
+| `price-per-km` | string | Yes | Price per kilometer in NXS |
+| `status` | string | Yes | `available`, `occupied`, `offline` |
+| `latitude` | string | Yes | GPS latitude as decimal string |
+| `longitude` | string | Yes | GPS longitude as decimal string |
+| `driver` | string | Yes | Driver's wallet address or namespace |
+
+**Naming:** `nexgo-taxi-{vehicleId}` (e.g., `nexgo-taxi-ABC-1234`)
+
+**Example:**
+```json
+{
+  "distordia-type": "nexgo-taxi",
+  "vehicle-id": "ABC-1234",
+  "vehicle-type": "sedan",
+  "price-per-km": "2.5",
+  "status": "available",
+  "latitude": "40.712800",
+  "longitude": "-74.006000",
+  "driver": "john-driver"
+}
+```
+
+---
+
+### 11. NexGo Rating
+
+> **File:** [`standards/nexgo-rating-standard.json`](standards/nexgo-rating-standard.json)
+> **Type:** `distordia-type: "nexgo-rating"`
+> **Format:** `raw` (state register, updatable)
+> **Purpose:** Passenger-to-driver rating system. Each passenger has one rating asset that stores scores for all drivers they have rated.
+
+Unlike JSON-format standards, this uses raw format -- the entire payload is stored as a JSON string in the asset's `data` field. This allows nested objects (the ratings map) which aren't possible with typed JSON fields. Ratings are aggregated across all passengers to compute per-driver averages.
+
+**Data format:**
+```json
+{
+  "distordia-type": "nexgo-rating",
+  "ratings": {
+    "<driver-genesis-hash>": { "score": 4, "avoid": false },
+    "<driver-genesis-hash>": { "score": 1, "avoid": true }
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `distordia-type` | string | Always `nexgo-rating` |
+| `ratings` | object | Map of driver genesis hash to rating entry |
+| `ratings[].score` | number | Rating 1 (worst) to 5 (best) |
+| `ratings[].avoid` | boolean | If true, driver is flagged as "to be avoided" |
+
+**Naming:** `nexgo-ratings` (one per passenger, local to their signature chain)
+**Cost:** 1 NXS (create) + 1 NXS (name). Updates cost only the transaction fee.
+
+**Aggregation:** The app queries all raw assets via `register/list/assets:raw`, parses each one, and computes per-driver average scores and avoid counts.
+
+---
+
+### 12. NexGo Ride
+
+> **File:** [`standards/nexgo-ride-standard.json`](standards/nexgo-ride-standard.json)
+> **Type:** `distordia-type: "nexgo-ride"`
+> **Format:** `raw` (state register, updatable)
+> **Status:** Draft (designed, not yet implemented)
+> **Purpose:** Contractual ride requests between passengers and drivers, using the Nexus Invoices API for atomic on-chain payment.
+
+The ride standard defines the full decentralized ride flow: passenger creates a ride request, driver accepts, driver creates an invoice, passenger pays atomically on-chain, and the ride completes. Payment is guaranteed by the blockchain via conditional contracts (no escrow needed).
+
+**Data format:**
+```json
+{
+  "distordia-type": "nexgo-ride",
+  "pickup-lat": "40.7128",
+  "pickup-lng": "-74.0060",
+  "dest-lat": "40.7589",
+  "dest-lng": "-73.9851",
+  "passengers": 2,
+  "status": "requesting",
+  "driver-genesis": ""
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `distordia-type` | string | Always `nexgo-ride` |
+| `pickup-lat` / `pickup-lng` | string | Pickup GPS coordinates |
+| `dest-lat` / `dest-lng` | string | Destination GPS coordinates |
+| `passengers` | number | Number of passengers |
+| `status` | string | `requesting`, `accepted`, `paid`, `cancelled` |
+| `driver-genesis` | string | Driver's genesis hash (empty until accepted) |
+
+**Naming:** `nexgo-ride-{timestamp}` (one per ride, local to passenger's signature chain)
+
+**Ride lifecycle:**
+1. Passenger creates ride request (status: `requesting`)
+2. Driver accepts -- ride asset updated with driver genesis (status: `accepted`)
+3. Driver creates invoice via `invoices/create/invoice`
+4. Passenger pays via `invoices/pay/invoice` -- atomic DEBIT + CLAIM (status: `paid`)
+5. Ride completes -- driver taxi asset returns to `available`, passenger can rate
+6. Cancellation: driver cancels invoice, ride status becomes `cancelled`
+
+---
+
 ## How Standards Relate
 
 ```
@@ -445,25 +620,28 @@ This standard defines two asset types:
                             | (identity root)  |
                             +--------+--------+
                                      |
-                       +-------------+-------------+
-                       |             |             |
-                       v             v             v
-                 +-----------+ +-----------+ +-----------+
-                 |  Content  | |  Product  | |   Agent   |
-                 |  Verif.   | | Masterdata| | Registry  |
-                 +-----------+ +-----------+ +-----+-----+
-                 |  Social   | |    NFT    |       |
-                 |   Posts   | | Marketplace|      v
-                 +-----------+ +-----------+ +-----------+
-                 |  Fantasy  |               |   Swarm   |
-                 | Football  |               |  + Mission|
-                 +-----------+               +-----------+
+              +-------------+--------+--------+-------------+
+              |             |                 |             |
+              v             v                 v             v
+        +-----------+ +-----------+     +-----------+ +-----------+
+        |  Content  | |  Product  |     |   Agent   | |   NexGo   |
+        |  Verif.   | | Masterdata|     | Registry  | |   Taxi    |
+        +-----------+ +-----------+     +-----+-----+ +-----------+
+        |  Social   | |    NFT    |           |       |   NexGo   |
+        |   Posts   | | Marketplace|          v       |   Rating  |
+        +-----------+ +-----------+     +-----------+ +-----------+
+        | Articles  | |  Fantasy  |     |   Swarm   | |   NexGo   |
+        | (linked   | | Football  |     |  + Mission| |   Ride    |
+        |  chain)   | |           |     |           | | + Invoice |
+        +-----------+ +-----------+     +-----------+ +-----------+
 
   LEGEND:
   -------
   Namespace  -->  owns/trusts all assets below it
   Agent      -->  can join Swarms and execute Missions
-  All assets -->  live on Nexus blockchain (1KB, typed JSON fields)
+  Articles   -->  linked-list of root + chunk assets for long-form content
+  NexGo      -->  P2P transport: taxi registry, ratings (raw), rides + invoices
+  All assets -->  live on Nexus blockchain (1KB, JSON or raw format)
 ```
 
 ---
@@ -533,6 +711,10 @@ Distordia_Standards/
     player-standard.json                 # Fantasy football (30 fields)
     agent-standard.json                  # AI agent registry (24 fields)
     swarm-standard.json                  # Swarm + missions (17 + 25 fields)
+    article-standard.json               # Long-form articles (10 + 4 fields)
+    nexgo-taxi-standard.json            # NexGo taxi registry (8 fields)
+    nexgo-rating-standard.json          # NexGo passenger ratings (raw, 2 fields)
+    nexgo-ride-standard.json            # NexGo ride requests (raw, 8 fields)
 ```
 
 ---
@@ -542,7 +724,8 @@ Distordia_Standards/
 | Application | Standard(s) Used | Repository |
 |-------------|-----------------|------------|
 | Content Verification | Content, Namespace | [distordia_com](https://github.com/AkstonCap/distordia_com) |
-| Distordia Social | Social, Namespace | [distordiaSocial](https://github.com/AkstonCap/distordiaSocial) |
+| Distordia Social | Social, Articles, Namespace | [distordiaSocial](https://github.com/AkstonCap/distordiaSocial) |
+| NexGo | NexGo Taxi, NexGo Rating, NexGo Ride, Namespace | [NexGo](https://github.com/AkstonCap/NexGo) |
 | Product Masterdata | Product, Namespace | [distordia_com](https://github.com/AkstonCap/distordia_com) |
 | NFT Marketplace | NFT, Namespace | [distordia_com](https://github.com/AkstonCap/distordia_com) |
 | Fantasy Football | Player, Namespace | [distordia_com](https://github.com/AkstonCap/distordia_com) |

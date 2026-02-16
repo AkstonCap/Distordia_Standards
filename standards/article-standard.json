@@ -1,0 +1,150 @@
+{
+  "$id": "https://distordia.com/standards/article.v1.json",
+  "title": "Distordia Article Standard",
+  "description": "Schema for long-form articles stored as linked-list asset chains on the Nexus blockchain. A root asset (distordia-article) holds metadata and the first text chunk, while continuation assets (distordia-article-chunk) carry subsequent text and a 'next' pointer, forming a singly-linked list.",
+  "version": "1.0.0",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB per asset (system fields use ~180 bytes, ~820 bytes available for data)",
+  "assetTypes": [
+    {
+      "type": "distordia-article",
+      "description": "Root article asset. Holds article metadata (title, tags, content warning) and the first text chunk. Points to the first continuation chunk via the 'next' field.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-article", "mutable": false, "maxlength": 24 },
+        { "name": "distordia-status", "type": "string", "value": "official", "mutable": true, "maxlength": 16 },
+        { "name": "title", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+        { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 384 },
+        { "name": "cw", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+        { "name": "reply-to", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+        { "name": "quote", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+        { "name": "tags", "type": "string", "value": "", "mutable": false, "maxlength": 128 },
+        { "name": "lang", "type": "string", "value": "en", "mutable": false, "maxlength": 2 },
+        { "name": "next", "type": "string", "value": "", "mutable": false, "maxlength": 64 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": {
+          "description": "Asset type identifier. Must be 'distordia-article'."
+        },
+        "distordia-status": {
+          "description": "Article status.",
+          "enum": ["official", "deleted", "hidden"]
+        },
+        "title": {
+          "description": "Article title. Required, max 64 characters."
+        },
+        "text": {
+          "description": "First text chunk of the article body. Max 384 characters for root asset due to metadata overhead."
+        },
+        "cw": {
+          "description": "Content warning/spoiler tag."
+        },
+        "reply-to": {
+          "description": "Address of post or article being replied to."
+        },
+        "quote": {
+          "description": "Address of post or article being quoted."
+        },
+        "tags": {
+          "description": "Comma-separated hashtags (without # prefix)."
+        },
+        "lang": {
+          "description": "ISO 639-1 language code."
+        },
+        "next": {
+          "description": "On-chain address of the next article-chunk asset. Empty string if this is the only/last chunk."
+        }
+      },
+      "required": ["distordia-type", "title", "text"]
+    },
+    {
+      "type": "distordia-article-chunk",
+      "description": "Continuation chunk for long articles. Carries text and a 'next' pointer to the following chunk. The last chunk has 'next' set to empty string.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-article-chunk", "mutable": false, "maxlength": 32 },
+        { "name": "distordia-status", "type": "string", "value": "official", "mutable": true, "maxlength": 16 },
+        { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 768 },
+        { "name": "next", "type": "string", "value": "", "mutable": false, "maxlength": 64 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": {
+          "description": "Asset type identifier. Must be 'distordia-article-chunk'."
+        },
+        "distordia-status": {
+          "description": "Chunk status.",
+          "enum": ["official", "deleted", "hidden"]
+        },
+        "text": {
+          "description": "Continuation text chunk. Max 768 characters (lean structure allows more text per asset)."
+        },
+        "next": {
+          "description": "On-chain address of the next chunk asset. Empty string for the last chunk in the chain."
+        }
+      },
+      "required": ["distordia-type", "text"]
+    }
+  ],
+  "chunking": {
+    "description": "Articles are split into a linked list of on-chain assets. Chunks are created in reverse order (last chunk first) so each chunk can reference the address of the next one.",
+    "limits": {
+      "rootTextMax": 384,
+      "chunkTextMax": 768,
+      "maxArticleChars": 5000,
+      "maxPostChars": 512
+    },
+    "costPerAsset": "1 NXS",
+    "example": {
+      "articleLength": 2000,
+      "assetsNeeded": 4,
+      "breakdown": "1 root (384 chars) + 3 chunks (768 + 768 + 80 chars)"
+    }
+  },
+  "examples": [
+    {
+      "_comment": "Short article fitting in a single root asset",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "version": 1,
+      "created": 1755775754,
+      "modified": 1755775754,
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-article",
+      "distordia-status": "official",
+      "title": "Introduction to Decentralized Identity",
+      "text": "Decentralized identity puts users in control of their digital presence. Rather than relying on centralized platforms...",
+      "tags": "identity,blockchain,web3",
+      "lang": "en",
+      "next": ""
+    },
+    {
+      "_comment": "Long article root pointing to continuation chunk",
+      "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-article",
+      "distordia-status": "official",
+      "title": "The Future of Agent-to-Agent Commerce",
+      "text": "As AI agents become more prevalent in business operations, the need for trustworthy agent-to-agent commerce grows...",
+      "tags": "agents,a2a,commerce",
+      "lang": "en",
+      "next": "a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7"
+    },
+    {
+      "_comment": "Continuation chunk (last in chain)",
+      "address": "a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-article-chunk",
+      "distordia-status": "official",
+      "text": "...continued text from the article. Verifiable agent identities enable secure multi-party transactions without intermediaries...",
+      "next": ""
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON json='[...]'",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilter": "distordia-type = 'distordia-article'",
+    "reassembly": "Follow the 'next' pointer chain starting from the root asset, concatenating each chunk's 'text' field to reconstruct the full article."
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "$id": "https://distordia.com/standards/nexgo-ride.v1.json",
+  "title": "NexGo Ride Request Standard",
+  "description": "Schema for ride request assets stored as raw (state register) assets on the Nexus blockchain. Represents the contractual ride flow between passengers and drivers in the NexGo P2P ride-hailing module. Uses Nexus Invoices API for payment.",
+  "version": "1.0.0",
+  "status": "draft",
+  "nexusFormat": "raw",
+  "maxSize": "1KB",
+  "dataFormat": {
+    "description": "Raw format stores the entire payload as a JSON string in the asset's data field.",
+    "schema": {
+      "distordia-type": {
+        "type": "string",
+        "value": "nexgo-ride",
+        "description": "Asset type identifier. Must be 'nexgo-ride'."
+      },
+      "pickup-lat": {
+        "type": "string",
+        "description": "Pickup location latitude as decimal string."
+      },
+      "pickup-lng": {
+        "type": "string",
+        "description": "Pickup location longitude as decimal string."
+      },
+      "dest-lat": {
+        "type": "string",
+        "description": "Destination latitude as decimal string."
+      },
+      "dest-lng": {
+        "type": "string",
+        "description": "Destination longitude as decimal string."
+      },
+      "passengers": {
+        "type": "number",
+        "description": "Number of passengers for the ride."
+      },
+      "status": {
+        "type": "string",
+        "description": "Current state of the ride request.",
+        "enum": ["requesting", "accepted", "paid", "cancelled"]
+      },
+      "driver-genesis": {
+        "type": "string",
+        "description": "Driver's genesis hash, populated when a driver accepts the ride. Empty while requesting."
+      }
+    }
+  },
+  "required": ["distordia-type", "pickup-lat", "pickup-lng", "dest-lat", "dest-lng", "passengers", "status"],
+  "naming": {
+    "pattern": "nexgo-ride-{timestamp}",
+    "description": "One ride asset per ride request, local to the passenger's signature chain.",
+    "example": "nexgo-ride-1755775754"
+  },
+  "lifecycle": {
+    "description": "The full decentralized ride flow uses Assets for state and Invoices for payment.",
+    "steps": [
+      {
+        "step": 1,
+        "action": "Passenger creates ride request",
+        "status": "requesting",
+        "endpoint": "assets/create/asset (format=raw)",
+        "description": "Passenger creates a ride request asset with pickup/destination coordinates and status 'requesting'."
+      },
+      {
+        "step": 2,
+        "action": "Driver accepts ride",
+        "status": "accepted",
+        "endpoint": "assets/update/asset (format=raw)",
+        "description": "Passenger updates the ride asset with the driver's genesis hash and status 'accepted'. Driver updates their taxi asset status to 'occupied'."
+      },
+      {
+        "step": 3,
+        "action": "Driver creates invoice",
+        "endpoint": "invoices/create/invoice",
+        "description": "Driver creates a payment invoice specifying the ride fare. The invoice is transferred to the passenger with a conditional contract."
+      },
+      {
+        "step": 4,
+        "action": "Passenger pays invoice",
+        "status": "paid",
+        "endpoint": "invoices/pay/invoice",
+        "description": "Payment is atomic: DEBIT (payment) + CLAIM (invoice ownership transfer) in one transaction. Ride status becomes 'paid'."
+      },
+      {
+        "step": 5,
+        "action": "Ride completion",
+        "description": "Driver updates taxi asset back to 'available'. Passenger can rate the driver via the nexgo-rating system."
+      },
+      {
+        "step": 6,
+        "action": "Cancellation (optional)",
+        "status": "cancelled",
+        "endpoint": "invoices/cancel/invoice",
+        "description": "If unpaid, the driver can cancel via invoices/cancel/invoice. The ride asset is updated to 'cancelled'."
+      }
+    ]
+  },
+  "examples": [
+    {
+      "_comment": "New ride request awaiting driver",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "type": "OBJECT",
+      "form": "RAW",
+      "data": "{\"distordia-type\":\"nexgo-ride\",\"pickup-lat\":\"40.7128\",\"pickup-lng\":\"-74.0060\",\"dest-lat\":\"40.7589\",\"dest-lng\":\"-73.9851\",\"passengers\":2,\"status\":\"requesting\",\"driver-genesis\":\"\"}"
+    },
+    {
+      "_comment": "Accepted ride with driver assigned",
+      "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "type": "OBJECT",
+      "form": "RAW",
+      "data": "{\"distordia-type\":\"nexgo-ride\",\"pickup-lat\":\"40.7128\",\"pickup-lng\":\"-74.0060\",\"dest-lat\":\"40.7589\",\"dest-lng\":\"-73.9851\",\"passengers\":2,\"status\":\"accepted\",\"driver-genesis\":\"b2d8c799fef322b3d25ec5b85999f1de0e5788da2c2eb32e7cdd64cefc0e1f71\"}"
+    }
+  ],
+  "relatedEndpoints": [
+    { "endpoint": "assets/create/asset", "purpose": "Create ride request (format=raw)", "auth": "Yes (PIN)" },
+    { "endpoint": "assets/update/asset", "purpose": "Update ride status (format=raw)", "auth": "Yes (PIN)" },
+    { "endpoint": "invoices/create/invoice", "purpose": "Driver creates ride invoice", "auth": "Yes (PIN)" },
+    { "endpoint": "invoices/pay/invoice", "purpose": "Passenger pays ride invoice", "auth": "Yes (PIN)" },
+    { "endpoint": "invoices/cancel/invoice", "purpose": "Cancel unpaid invoice", "auth": "Yes (PIN)" },
+    { "endpoint": "invoices/get/invoice", "purpose": "Get invoice details", "auth": "No" },
+    { "endpoint": "invoices/list/outstanding", "purpose": "List unpaid invoices", "auth": "Yes" }
+  ],
+  "nexus": {
+    "format": "raw",
+    "createCommand": "assets/create/asset format=raw name=nexgo-ride-{timestamp} data='{...}'",
+    "updateCommand": "assets/update/asset format=raw name=nexgo-ride-{timestamp} data='{...}'",
+    "queryEndpoint": "register/list/assets:raw",
+    "queryNote": "Filter parsed data for distordia-type === 'nexgo-ride'."
+  }
+}

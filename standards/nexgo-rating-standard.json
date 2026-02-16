@@ -1,0 +1,70 @@
+{
+  "$id": "https://distordia.com/standards/nexgo-rating.v1.json",
+  "title": "NexGo Rating Standard",
+  "description": "Schema for passenger-to-driver ratings stored as raw (state register) assets on the Nexus blockchain, used by the NexGo P2P ride-hailing module.",
+  "version": "1.0.0",
+  "nexusFormat": "raw",
+  "maxSize": "1KB",
+  "dataFormat": {
+    "description": "Raw format stores the entire payload as a JSON string in the asset's data field. Unlike JSON-format assets, raw assets do not have typed fields -- the data is a single opaque blob that the application parses.",
+    "schema": {
+      "distordia-type": {
+        "type": "string",
+        "value": "nexgo-rating",
+        "description": "Asset type identifier. Must be 'nexgo-rating'."
+      },
+      "ratings": {
+        "type": "object",
+        "description": "Map of driver genesis hashes to rating entries. Each key is a Nexus genesis hash identifying a driver.",
+        "valueSchema": {
+          "score": {
+            "type": "number",
+            "description": "Rating score from 1 (worst) to 5 (best).",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "avoid": {
+            "type": "boolean",
+            "description": "If true, marks this driver as 'to be avoided' by the rating passenger."
+          }
+        }
+      }
+    }
+  },
+  "required": ["distordia-type", "ratings"],
+  "naming": {
+    "pattern": "nexgo-ratings",
+    "description": "One rating asset per passenger, local to the passenger's signature chain.",
+    "example": "nexgo-ratings"
+  },
+  "cost": {
+    "create": "1 NXS",
+    "name": "1 NXS",
+    "update": "Transaction fee only"
+  },
+  "aggregation": {
+    "description": "Multiple rating assets from different passengers are aggregated to compute per-driver statistics.",
+    "computedFields": {
+      "average": "Mean score across all ratings for a driver",
+      "count": "Total number of ratings received",
+      "avoidCount": "Number of passengers who flagged the driver as 'avoid'"
+    }
+  },
+  "examples": [
+    {
+      "_comment": "Passenger's rating asset with ratings for two drivers",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "type": "OBJECT",
+      "form": "RAW",
+      "data": "{\"distordia-type\":\"nexgo-rating\",\"ratings\":{\"b2d8c799fef322b3d25ec5b85999f1de\":{\"score\":4,\"avoid\":false},\"c3e9d800gfg433c4e36fd6c96aaa02ef\":{\"score\":1,\"avoid\":true}}}"
+    }
+  ],
+  "nexus": {
+    "format": "raw",
+    "createCommand": "assets/create/asset format=raw name=nexgo-ratings data='{\"distordia-type\":\"nexgo-rating\",\"ratings\":{}}'",
+    "updateCommand": "assets/update/asset format=raw name=nexgo-ratings data='{...}'",
+    "queryEndpoint": "register/list/assets:raw",
+    "queryNote": "Fetches ALL raw assets globally. App must parse each asset's data field and filter for distordia-type === 'nexgo-rating'."
+  }
+}
