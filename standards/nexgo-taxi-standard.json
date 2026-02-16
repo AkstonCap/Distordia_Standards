@@ -1,0 +1,93 @@
+{
+  "$id": "https://distordia.com/standards/nexgo-taxi.v1.json",
+  "title": "NexGo Taxi Standard",
+  "description": "Schema for decentralized taxi assets on the Nexus blockchain, used by the NexGo P2P ride-hailing module.",
+  "version": "1.0.0",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
+  "nexusFields": [
+    { "name": "distordia-type", "type": "string", "value": "nexgo-taxi", "mutable": false, "maxlength": 64 },
+    { "name": "vehicle-id", "type": "string", "value": "", "mutable": true, "maxlength": 64 },
+    { "name": "vehicle-type", "type": "string", "value": "sedan", "mutable": true, "maxlength": 64 },
+    { "name": "price-per-km", "type": "string", "value": "0", "mutable": true, "maxlength": 64 },
+    { "name": "status", "type": "string", "value": "offline", "mutable": true, "maxlength": 64 },
+    { "name": "latitude", "type": "string", "value": "0.000000", "mutable": true, "maxlength": 64 },
+    { "name": "longitude", "type": "string", "value": "0.000000", "mutable": true, "maxlength": 64 },
+    { "name": "driver", "type": "string", "value": "", "mutable": true, "maxlength": 128 }
+  ],
+  "fieldDefinitions": {
+    "distordia-type": {
+      "description": "Asset type identifier. Must be 'nexgo-taxi'.",
+      "enum": ["nexgo-taxi"]
+    },
+    "vehicle-id": {
+      "description": "Driver's vehicle identifier or license plate number."
+    },
+    "vehicle-type": {
+      "description": "Vehicle classification.",
+      "enum": ["sedan", "suv", "van", "luxury"]
+    },
+    "price-per-km": {
+      "description": "Price per kilometer in NXS, stored as string."
+    },
+    "status": {
+      "description": "Current availability status of the taxi.",
+      "enum": ["available", "occupied", "offline"]
+    },
+    "latitude": {
+      "description": "GPS latitude as decimal string (e.g., '40.712800')."
+    },
+    "longitude": {
+      "description": "GPS longitude as decimal string (e.g., '-74.006000')."
+    },
+    "driver": {
+      "description": "Driver's wallet address or namespace identifier."
+    }
+  },
+  "required": ["distordia-type", "vehicle-id"],
+  "naming": {
+    "pattern": "nexgo-taxi-{vehicleId}",
+    "example": "nexgo-taxi-ABC123"
+  },
+  "examples": [
+    {
+      "_comment": "Available taxi broadcasting position",
+      "address": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6",
+      "owner": "b2d8c799fef322b3d25ec5b85999f1de0e5788da2c2eb32e7cdd64cefc0e1f71",
+      "version": 1,
+      "created": 1755775754,
+      "modified": 1755780000,
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "nexgo-taxi",
+      "vehicle-id": "ABC-1234",
+      "vehicle-type": "sedan",
+      "price-per-km": "2.5",
+      "status": "available",
+      "latitude": "40.712800",
+      "longitude": "-74.006000",
+      "driver": "john-driver"
+    },
+    {
+      "_comment": "Occupied luxury taxi",
+      "address": "z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0f9e8d7c6b5a4",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "nexgo-taxi",
+      "vehicle-id": "LUX-5678",
+      "vehicle-type": "luxury",
+      "price-per-km": "5.0",
+      "status": "occupied",
+      "latitude": "40.758900",
+      "longitude": "-73.985100",
+      "driver": "premium-rides"
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON name=nexgo-taxi-{vehicleId} json='[...]'",
+    "updateCommand": "assets/update/asset name=nexgo-taxi-{vehicleId} format=basic {field}={value}",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilter": "distordia-type = 'nexgo-taxi' AND status != 'offline'"
+  }
+}
