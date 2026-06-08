@@ -230,6 +230,8 @@ Supports threading (replies), quotes, reposts, media attachments, hashtags, ment
 
 Products are registered as immutable, timestamped blockchain assets. Each product gets a unique on-chain address that serves as a universal reference across ERP and supply chain systems.
 
+> **In-depth review:** [Product Masterdata vs. Industrial MRP Needs](docs/product-masterdata-mrp-analysis.md) — a gap analysis of this standard against the requirements of a decentralized, B2B, common MRP system, with a proposed production-ready `product.v2` redesign.
+
 **Key fields:**
 
 | Field | Type | Mutable | Description |
