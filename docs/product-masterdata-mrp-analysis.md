@@ -177,7 +177,8 @@ allergen, or country-of-origin *certificate* support.
 ### 4.5 Data-governance gaps for a *common* (shared) register
 
 **G15 — Single-owner model is wrong for a common register.** "Common" implies many parties read,
-contribute, and *correct* the same material. v1 ties every field to one namespace owner. There is
+contribute, and *correct* the same material. v1 ties every field to the single sigchain (genesis)
+that created the asset — and to the one namespace attested to it. There is
 no concept of **field-level authority** (manufacturer owns identity; each buyer owns their planning
 overlay), no **data-steward role**, no **dispute/correction workflow**, and no **data-quality
 score**. The namespace standard's tiers/reputation/slashing are the right primitives — but the
@@ -300,16 +301,85 @@ model into a small core asset plus address-linked extension assets**, reusing th
 pattern already proven by the [Article standard](../standards/article-standard.json) and the
 trust/stewardship primitives of the [Namespace standard](../standards/namespace-standard.json).
 
+### 6.0 Platform grounding — Nexus identity, ownership & system fields
+
+Before redesigning the schema, the proposal must be correct about how Nexus actually handles
+login, identity, and asset creation. These facts constrain every field decision below.
+
+**Login is a signature chain (Sigchain), not an account record.** A user authenticates by
+unlocking their Nexus **signature chain** with credentials (username + password + PIN). Every
+state change — `assets/create/asset`, `assets/update/asset`, transfers — is a transaction
+*appended to and signed by* the owner's sigchain. There is no external account table; the sigchain
+*is* the account ledger. Nothing in a product schema stores credentials; the platform handles auth.
+
+**Identity has two layers: genesis (machine) vs. namespace (human-readable).**
+- The **genesis hash** is the immutable 256-bit (64-hex-char) root identifier of a sigchain — the
+  canonical, cryptographic identity of an account. It does **not** change when the username or
+  credentials rotate. Nexus auto-stamps it into the `owner` field of every asset the sigchain
+  creates. *Genesis answers "who cryptographically owns this asset."*
+- A **namespace** is a separate, human-readable *register* (a registered name) owned by a sigchain.
+  Distordia's trust model attests tier/reputation to the **namespace**, which resolves to its
+  owning genesis. *Namespace answers "which human-readable, attestable entity is this."*
+
+  → Consequence for the schema: identity-referencing fields (`steward`, `supplier`, `mfr`) should
+  store the **namespace** (human-readable and attestable via the namespace standard), **not** a raw
+  genesis hash. The cryptographic owner is already captured automatically in the system `owner`
+  field, so the schema never needs to duplicate the genesis.
+
+**Asset creation auto-assigns system attributes — schemas must not redefine them.** On
+`assets/create/asset`, Nexus assigns and returns, *outside* the user-defined field list:
+
+| System attribute | Meaning |
+|---|---|
+| `address` | Unique register locator (base58, ~51 chars) — the asset's on-chain primary key |
+| `owner` | Creator's **genesis hash** |
+| `type` / `form` | `OBJECT` / `ASSET` (or `RAW`) |
+| `version` | `1` at create, increments on every update |
+| `created` / `modified` | Unix timestamps (uint64) |
+
+A standard must **not** declare its own `address`, `owner`, `version`, `created`, or `modified`
+data fields — they are platform-managed. (Where an application genuinely needs a *business* event
+time distinct from the ledger time, name it explicitly, e.g. agent-standard's `created-ts`.)
+
+**The 1 KB cap includes system overhead.** The 1 KB limit is the *total* serialized register size.
+Per the repo's working budget, platform/system fields consume **~180 bytes**, leaving **~820 bytes**
+for user-defined data. Every schema in §6 is budgeted against ~820 bytes (see the budget table in
+§6.3), and the self-`address` field below counts against that allotment.
+
+**Self-`address` convention (REQUIRED for all Distordia assets).** The auto-assigned register
+`address` is the asset's primary key, but on the Distordia register API it is **not returned as a
+filterable column** in `register/list/assets` results — so an asset cannot be *located by* or
+*cross-referenced through* its own address via query. Therefore every asset **duplicates its own
+register address into a normal, queryable `address` field.** Because the address is unknown until
+the create transaction confirms, this is a deliberate **two-step write**:
+
+1. `assets/create/asset format=JSON name=… json='[…]'` → Nexus returns the new register `address`.
+2. `assets/update/asset address=<returned-address> address="<returned-address>"` → stamp that value
+   into the asset's own `address` field.
+
+The field is therefore `mutable: true` (written exactly once, post-create, then frozen by
+convention). **All inter-asset links** in this proposal (`product`, `parent`, `component`,
+`supersedes`, `next`) store the *target's* duplicated `address` value, so any consumer resolves a
+link with `WHERE address = '<value>'`. *Caveat:* if a node build rejects a user field literally
+named `address` (reserved-name collision with the system attribute), use `self-addr` consistently
+instead — the convention is otherwise identical.
+
 ### 6.1 Design principles
 
-1. **Separate identity from planning.** Manufacturer publishes the immutable *core*; each buyer
-   attaches their own *planning overlay*. This is what makes the register genuinely *common*.
+1. **Separate identity from planning.** Manufacturer publishes the (mostly) immutable *core*; each
+   buyer attaches their own *planning overlay*. This is what makes the register genuinely *common*.
 2. **Composable, not monolithic.** Optional concerns (BOM, sourcing, costing, compliance,
-   classification, packaging levels) are separate asset types linked by address.
-3. **Append-only change history.** New versions are new assets that `supersede` the prior address;
-   the chain *is* the audit trail. Stop overloading `mutable: true`.
-4. **Field-level authority via namespaces.** Each extension asset is owned/stewarded by the party
-   with authority over that data, with tier/reputation from the namespace standard.
+   classification, packaging levels) are separate asset types. Linkage points *upward*: each
+   extension stores the core's `address` in its `product` field, and is found by querying that
+   field — so the core never has to be rewritten when an extension is added.
+3. **Append-only change history.** A revision is a *new* asset whose `supersedes` holds the prior
+   asset's `address`; the chain *is* the audit trail. The platform's auto `version`/`modified`
+   covers in-place edits to mutable fields; `supersedes` covers structural revisions. Stop
+   overloading `mutable: true` as a substitute for history.
+4. **Field-level authority via namespaces.** Each asset is owned by the sigchain (genesis) that
+   created it and is attributed to a human-readable **namespace** carrying tier/reputation from the
+   namespace standard — so the manufacturer's core and a buyer's overlay are independently
+   authored and independently trusted.
 5. **Interoperability first.** Every field carries a documented crosswalk to GS1 GDSN, UNSPSC/
    eCl@ss/ETIM, ISO 8000, and common ERP field names (Appendix A).
 
@@ -318,35 +388,43 @@ trust/stewardship primitives of the [Namespace standard](../standards/namespace-
 ```
                        ┌───────────────────────────┐
                        │   product (core, v2)       │  ← manufacturer-owned, mostly immutable
-                       │   identity + base logistics│
-                       └─────────────┬──────────────┘
-                                     │ address links
+                       │   identity + base logistics│     carries self-`address` (its primary key)
+                       └───────────────────────────┘
+                                     ▲
+                       each extension stores the core's `address`
+                       in its `product` field (links point UP)
    ┌──────────────┬──────────────┬───┴───────┬──────────────┬───────────────┐
-   ▼              ▼              ▼            ▼              ▼               ▼
+   │              │              │            │              │               │
 product-plan   product-source product-cost product-comp product-class   product-pack
 (buyer/plant)  (supplier/AVL) (valuation)  (compliance) (UNSPSC/ETIM…)  (GTIN hierarchy)
    │
    ▼
-product-bom-line  (one asset per BOM component; chained — solves "no arrays")
+product-bom-line  (one asset per BOM component; chained via `next` — solves "no arrays")
 ```
+
+Linkage is **upward and query-resolved**: extensions reference the core by its self-`address`; the
+core holds no list of children, so adding an extension never rewrites the core. To assemble a full
+view, query `WHERE product = '<core-address>'`.
 
 ### 6.3 Proposed core schema (`product.v2`)
 
-Additions to v1 are **bold**; the asset stays well within 1KB by pushing optional data to
-extensions.
+Additions to v1 are **bold**; the asset stays within 1 KB (including the ~180 B system overhead and
+the self-`address` field) by pushing optional data to extensions. The `address` field is stamped in
+the post-create step described in §6.0.
 
 ```json
 [
   {"name":"distordia-type","type":"string","value":"product","mutable":false,"maxlength":16},
   {"name":"schema-ver","type":"string","value":"2.0.0","mutable":false,"maxlength":8},
+  {"name":"address","type":"string","value":"","mutable":true,"maxlength":56},
   {"name":"status","type":"string","value":"valid","mutable":true,"maxlength":8},
   {"name":"art-nr","type":"string","value":"","mutable":false,"maxlength":32},
   {"name":"mpn","type":"string","value":"","mutable":false,"maxlength":40},
   {"name":"gtin","type":"string","value":"","mutable":false,"maxlength":14},
   {"name":"mat-type","type":"string","value":"finished","mutable":false,"maxlength":12},
   {"name":"proc-type","type":"string","value":"buy","mutable":true,"maxlength":4},
-  {"name":"desc","type":"string","value":"","mutable":true,"maxlength":200},
-  {"name":"mfr","type":"string","value":"","mutable":false,"maxlength":64},
+  {"name":"desc","type":"string","value":"","mutable":true,"maxlength":128},
+  {"name":"mfr","type":"string","value":"","mutable":false,"maxlength":40},
   {"name":"brand","type":"string","value":"","mutable":false,"maxlength":32},
   {"name":"base-uom","type":"string","value":"EA","mutable":false,"maxlength":4},
   {"name":"gpc","type":"string","value":"","mutable":false,"maxlength":8},
@@ -360,30 +438,53 @@ extensions.
   {"name":"rev","type":"string","value":"A","mutable":false,"maxlength":8},
   {"name":"steward","type":"string","value":"","mutable":false,"maxlength":32},
   {"name":"dq-score","type":"uint16","value":0,"mutable":true},
-  {"name":"supersedes","type":"string","value":"","mutable":false,"maxlength":64},
-  {"name":"ext","type":"string","value":"","mutable":true,"maxlength":256}
+  {"name":"supersedes","type":"string","value":"","mutable":false,"maxlength":56}
 ]
 ```
 
 Key changes vs v1:
+- **`address`** — self-stamped copy of the register address (see §6.0). Required for the asset to be
+  found by query and for extensions to link to it.
 - **`mpn`, `mat-type`, `proc-type`** — the three single-field omissions that block MRP (G5, G9,
-  and the make/buy/type distinction of G2).
+  and the make/buy/type distinction of G2). `mfr`/`steward` store **namespaces**, not genesis hashes.
 - **`base-uom`** replaces `uom`; conversions live in the `product-pack`/UOM extension (G-UOM).
-- **`rev` + `supersedes`** — engineering revision and append-only chaining (G16, G18).
+- **`rev` + `supersedes`** — engineering revision and append-only chaining (G16, G18); `supersedes`
+  holds the prior asset's `address`.
 - **`steward`, `dq-score`** — data-governance hooks tied to namespace tiers (G15, G12).
-- **`ext`** — pipe-separated list of addresses for attached extension assets (the composability
-  spine). E.g. `ext: "addr-plan|addr-source|addr-comp|addr-class"`.
+- **No `ext` list.** Extensions link *upward* to the core (principle 2), so the core needs no child
+  list — this also frees ~256 B and means adding an extension never rewrites the core.
 - Dropped from core (moved to extensions): `cat/subcat` → classification; `url/img` → media/class;
   `hazard/perish/shelf-days` → compliance; `replaces/replaced-by` → superseded by `rev`/`supersedes`.
 
+**1 KB budget check (core v2):**
+
+| Bucket | Bytes (approx.) |
+|---|---|
+| System/platform fields (`address`-locator, `owner`, `type`, `form`, `version`, `created`, `modified`) | ~180 reserved |
+| Core user fields — field names + structural overhead (25 fields) | ~290 |
+| Core user fields — values at *typical* fill (GTIN 13, MPN ~16, desc ~60, address 51, codes short) | ~330 |
+| **Typical total** | **~800 / 1024** ✅ |
+| Core user fields — values at *worst-case* maxlength | ~570 |
+| **Worst-case total** | **~1040** ⚠️ tune `desc` |
+
+Immutable string fields store their *actual* (usually short) length, so real assets land
+comfortably under 1 KB. `desc` (the only large mutable string) is the swing field: at 128 it fits
+the typical case; if a node build pre-allocates mutable fields to `maxlength`, trim `desc` to ~96 or
+move the long description to a `product-class`/media extension.
+
 ### 6.4 Extension asset types
+
+Every extension follows the §6.0 conventions: it is created by its authoring sigchain, carries its
+own self-`address` field (omitted below for brevity except where another asset links to it), and
+references the core via `product` = the core's `address`. Identity fields hold **namespaces**.
 
 **`product-plan` (plant/buyer planning overlay — the heart of MRP).** Owned by the *buyer*, not the
 manufacturer.
 ```json
 [
   {"name":"distordia-type","type":"string","value":"product-plan","mutable":false},
-  {"name":"product","type":"string","value":"<core-address>","mutable":false},
+  {"name":"address","type":"string","value":"","mutable":true,"maxlength":56},
+  {"name":"product","type":"string","value":"<core-address>","mutable":false,"maxlength":56},
   {"name":"plant","type":"string","value":"","mutable":false,"maxlength":16},
   {"name":"mrp-type","type":"string","value":"PD","mutable":true,"maxlength":4},
   {"name":"lot-proc","type":"string","value":"EX","mutable":true,"maxlength":4},
@@ -400,10 +501,12 @@ manufacturer.
 ```
 *This single extension is what upgrades the register from "catalog" to "plannable" (closes G5–G7).*
 
-**`product-source` (sourcing / AVL — one per supplier).** Closes G8.
+**`product-source` (sourcing / AVL — one per supplier).** Closes G8. `supplier` is a **namespace**
+(attestable via the namespace standard), not a genesis hash.
 ```json
 [
   {"name":"distordia-type","value":"product-source"},
+  {"name":"address","value":"","mutable":true,"maxlength":56},
   {"name":"product","value":"<core-address>"},
   {"name":"supplier","value":"<namespace>"},
   {"name":"supplier-pn","value":"","maxlength":40},
@@ -419,10 +522,12 @@ manufacturer.
 ```
 
 **`product-bom-line` (one asset per component — solves "no arrays").** Closes G1. BOM lines chain
-via `next`, exactly like article chunks.
+via `next`, exactly like article chunks. Because lines link to each other, each carries its
+self-`address`; `parent`/`component`/`next` all store the *target's* `address`.
 ```json
 [
   {"name":"distordia-type","value":"product-bom-line"},
+  {"name":"address","value":"","mutable":true,"maxlength":56},
   {"name":"parent","value":"<parent-core-address>"},
   {"name":"component","value":"<component-core-address>"},
   {"name":"qty-milli","type":"uint64","value":0},
@@ -431,10 +536,11 @@ via `next`, exactly like article chunks.
   {"name":"alt-group","type":"uint8","value":0},
   {"name":"eff-from","type":"uint64","value":0},
   {"name":"eff-to","type":"uint64","value":0},
-  {"name":"next","value":""}
+  {"name":"next","value":"<address-of-next-bom-line>"}
 ]
 ```
-(`qty-milli` = quantity ×1000 to avoid floats; `scrap-bps` = basis points.)
+(`qty-milli` = quantity ×1000 to avoid floats; `scrap-bps` = basis points. To find a product's BOM:
+`WHERE parent = '<core-address>'`, then walk `next`.)
 
 **`product-comp` (compliance).** Real hazmat + regulatory, closing G14: `un-number`,
 `hazard-class`, `packing-group`, `sds-url`, `sds-hash`, `rohs` (0/1), `reach` (0/1),
