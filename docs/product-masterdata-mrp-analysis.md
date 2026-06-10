@@ -1,416 +1,307 @@
-# Product Masterdata vs. Industrial MRP Needs — Gap Analysis & Production-Readiness Proposal
+# Product Master Data as the Base Layer of a Decentralized MRP Stack
 
-> **Scope:** Critical review of the [Distordia Product Masterdata Standard](../standards/product-standard.json)
-> (`distordia-type: "product"`, v1.0.0) measured against the requirements of a **decentralized,
-> B2B, common Material Requirements Planning (MRP) system** spanning a wide range of product
-> categories.
+> **Scope:** A correct framing of the [Distordia Product Masterdata Standard](../standards/product-standard.json)
+> (`distordia-type: "product"`, v1.0.0) as the **base identity layer** for a decentralized, B2B,
+> common MRP system — *not* as a monolith that must contain all of MRP.
 >
-> **Verdict in one line:** v1 is a competent *product catalog* record, but it is **not yet an
-> MRP master-data standard**. MRP needs structures the current schema simply does not have
-> (bills of material, planning parameters, sourcing, multi-plant context, units-of-measure
-> conversions), and its single-flat-1KB-asset shape cannot carry them. This document explains
-> the gaps, walks through industry-by-industry requirements, and proposes a modular `product.v2`
-> redesign that fits the Nexus blockchain constraints.
+> **The thesis in one line:** The master-data standard should be a **deliberately minimal, stable
+> product identity register/catalogue**. That scoping is *correct*. MRP capabilities — BOM,
+> procurement, planning, warehouse, costing, compliance — are **separate layers of registers and
+> applications stacked on top**, each referencing the base by address. This document (1) defends
+> that layered model, (2) draws the line between what belongs *in* the base layer and what belongs
+> *above* it, (3) identifies the small set of genuine improvements the base layer needs to be a
+> production-ready anchor, and (4) sketches how the application layers attach.
 
 ---
 
 ## 1. Executive Summary
 
-The v1 product standard does three things well:
+A common mistake when reviewing an on-chain product register is to measure it against the *entire*
+feature set of an ERP/MRP suite and conclude it is "incomplete." That conflates two different
+things:
 
-1. It anchors a product to an **immutable, timestamped, namespace-owned on-chain address** — a
-   genuinely useful universal reference.
-2. It captures the **identity and logistics basics** (GTIN, manufacturer, dimensions, weight,
-   country of origin, HS code, GPC).
-3. It is **disciplined about the 1KB / typed-field / no-nested-object** constraints of Nexus.
+- **Master data (the base layer):** *What a product intrinsically is* — its identity and stable,
+  context-independent properties. One product, one authoritative record, manufacturer-authored.
+- **MRP applications (the layers above):** *How parties relate to and act on that product* — bills
+  of material, sourcing, planning parameters, stock, cost, compliance certificates. These are
+  **relational and context-dependent** (per plant, per buyer, per supplier, per order) and are
+  authored by *different* parties than the manufacturer.
 
-But "a universal product reference with logistics attributes" is roughly the *first 10%* of what
-an MRP system consumes. MRP is fundamentally a **time-phased netting engine**:
+Keeping the master-data register minimal is therefore a **feature, not a deficiency**. It gives the
+whole stack a single, stable, immutable anchor that every higher layer can reference without
+rewriting. The v1 standard gets this scoping essentially right.
+
+What v1 *does* need is a short list of **base-layer corrections** — a handful of intrinsic-identity
+fields and, crucially, the *contracts* a shared anchor must honour (a queryable primary key,
+identifier cross-references, stable versioning, and multi-party stewardship). Those are addressed in
+§5 and §7. Everything else this document discusses is explicitly framed as **separate layers**
+(§4, §6, §8), not as holes in the master-data standard.
+
+---
+
+## 2. The Layered Architecture
+
+```mermaid
+flowchart TB
+    subgraph L0["Layer 0 — Identity &amp; Trust  (existing standards)"]
+        SC["Sigchain login<br/>genesis = cryptographic owner"]
+        NS["Namespace attestation<br/>tier · reputation · stewardship"]
+    end
+    subgraph L1["Layer 1 — Product Master Data  (THIS standard)"]
+        PMD["product register / catalogue<br/>stable identity only:<br/>art-nr · mpn · gtin · mat-type ·<br/>base-uom · mfr · dimensions · origin"]
+    end
+    subgraph L2["Layer 2 — MRP Application Registers  (companion standards)"]
+        direction LR
+        CLS["Classification<br/>&amp; attributes"]
+        SRC["Sourcing / AVL<br/>procurement"]
+        PLN["Planning<br/>lead time · lot size ·<br/>safety stock"]
+        BOM["BOM /<br/>engineering change"]
+        INV["Inventory /<br/>warehouse"]
+        CST["Costing /<br/>valuation"]
+        CMP["Compliance /<br/>certificates"]
+    end
+    subgraph L3["Layer 3 — Transactional Signals  (companion standards)"]
+        direction LR
+        DEM["Demand<br/>forecast · sales orders"]
+        SUP["Supply<br/>POs · production orders · stock"]
+    end
+    ENG["MRP Engine<br/>netting · BOM explosion · time-phasing"]
+    OUT["Planned production orders ·<br/>purchase requisitions"]
+
+    SC --- NS
+    L0 ==> L1
+    L1 ==> L2
+    L2 ==> ENG
+    L3 ==> ENG
+    ENG ==> OUT
+```
+
+**How to read this stack:**
+
+- **Layer 0 (Identity & Trust)** already exists — the [Namespace](../standards/namespace-standard.json)
+  standard plus Nexus sigchain/genesis (see §3). It says *who* owns and *who* is trusted.
+- **Layer 1 (Product Master Data)** is the subject standard. Its only job is to be the **stable,
+  globally referenceable identity** of a product — the row every other layer points at. It is
+  manufacturer-authored and (almost entirely) immutable.
+- **Layer 2 (MRP Application Registers)** are *separate* standards/registers, each owned by the
+  party with authority over that concern (a buyer owns planning, a supplier owns its source record).
+  Each links *upward* to the Layer 1 record by its address.
+- **Layer 3 (Transactional Signals)** carry the time-varying demand and supply that MRP nets.
+- **The MRP Engine** is an *application*, not a register — it reads Layers 1–3 and emits planned
+  orders. It is deliberately outside the data standards.
+
+The decisive design point: **the base layer never has to know about the layers above it.** Adding
+a BOM, a supplier, or a planning overlay creates new assets in higher layers that *reference* the
+product; the product record itself is untouched. That is exactly why the base must stay minimal.
+
+---
+
+## 3. Where the Line Sits — Base Layer vs. Layers Above
+
+The test for "does this belong in the product master record?" is:
+
+> **Is it an intrinsic, context-independent property of *what the product is*** (true regardless of
+> who buys it, which plant stocks it, or which order consumes it)? → **Base layer.**
+> Is it **relational or context-dependent** (varies by party, plant, supplier, time, or quantity)?
+> → **A layer above.**
+
+| Concern | Example data | Layer | Why |
+|---|---|---|---|
+| Identity | `art-nr`, `mpn`, `gtin`, `mfr`, `brand` | **Base (L1)** | Intrinsic; the product's name and keys |
+| Material type | raw / semi-finished / finished / service | **Base (L1)** | Intrinsic; also tells layers above which apply |
+| Base unit of measure | `base-uom` | **Base (L1)** | The unit identity is denominated in |
+| Physical facts | weight, dimensions, country of origin, HS code | **Base (L1)** | Properties of the item itself |
+| Intrinsic substance IDs | CAS / UN number (for a chemical) | **Base (L1)** | A property of the *material*, not an app |
+| Classification | UNSPSC / eCl@ss / ETIM, attributes | App (L2) | Multiple schemes, evolves, many authorities |
+| Bill of Materials | components, qty, scrap, effectivity | App (L2) | A *relationship* between products |
+| Sourcing / AVL | supplier, supplier PN, MOQ, price, lead time | App (L2) | Per-supplier; supplier-authored |
+| Planning | MRP type, lead times, lot size, safety stock | App (L2) | Per-plant/buyer; buyer-authored |
+| Costing / valuation | standard price, currency | App (L2) | Per-org finance context |
+| Compliance certificates | RoHS/REACH status, SDS, test reports, UDI serials | App (L2) | Per-jurisdiction, time-bound, issued by others |
+| Inventory / warehouse | on-hand, bin, batch, serial | App (L2) | Per-location, constantly changing |
+| Packaging / UOM hierarchy | each/case/pallet GTINs, conversions | App (L2) | A set of related trade items, not one identity |
+| Demand / supply | forecasts, sales orders, POs, production orders | Signal (L3) | Transactional, time-phased |
+
+Note the deliberate restraint: **only the first six rows belong in the master-data standard.**
+Everything below the line is a companion standard. The few base-layer rows that v1 is missing or
+under-specifies are the subject of §5; the layers above are the subject of §6.
+
+---
+
+## 4. The MRP Application Layers (Companion Standards, Not Master-Data Gaps)
+
+A full MRP run is a netting engine:
 
 ```
    Net Requirement = Gross Requirement (demand) − On-hand − Scheduled Receipts
-   ... then exploded down the Bill of Materials, offset by lead time,
-       rounded to lot-sizing rules, and routed to make-or-buy.
+   … exploded down the BOM, offset by lead time, rounded to lot-sizing rules,
+     and routed by make-or-buy.
 ```
 
-Every italicised term above maps to master data that **v1 does not model**: demand linkage, BOM,
-lead-time offset, lot-sizing, make-vs-buy. Without them the register is a catalog, not an MRP
-backbone. The remaining gaps — multi-plant context, UOM conversions, sourcing/supplier records,
-costing, compliance depth, classification breadth, and data-governance for *multi-party* editing —
-are what separate "demo-grade" from "production-grade" for a **common** (shared, B2B) register.
+Every italic term is data — but **none of it is master data.** It lives in the layers above and
+references the Layer 1 product by address. The table below catalogues those layers so the reader can
+see the *whole* MRP picture **without** importing any of it into the base standard.
 
-The good news: the ecosystem already contains the architectural pattern needed to fix the
-biggest structural problem. The [Article standard](../standards/article-standard.json) solves the
-1KB ceiling with a **linked chain of assets**. The same idea — a small immutable *core* asset plus
-address-linked *extension* assets — turns the product register from a flat record into a
-normalized, composable master-data graph. Section 6 specifies that redesign.
+| Application layer | Owns / authors | Key data | References base via |
+|---|---|---|---|
+| **Planning** | Buyer / plant | MRP type, planned delivery + production lead time, GR time, safety stock, reorder point, min/max/rounding lot | `product = <core address>` |
+| **Sourcing / Procurement** | Supplier (per source) | supplier namespace, supplier PN, MOQ, price + currency, lead time, incoterm, preference/quota | `product = <core address>` |
+| **BOM / Engineering** | Designing org | parent↔component links, qty, scrap, alternates, revision effectivity | `parent = <core address>` |
+| **Costing / Valuation** | Finance org | standard/moving price, price unit, currency, valuation class | `product = <core address>` |
+| **Inventory / Warehouse** | Stock-holder / plant | on-hand, location/bin, batch, serial, status | `product = <core address>` |
+| **Classification & Attributes** | Catalogue steward | UNSPSC/eCl@ss/ETIM codes, characteristic key-values | `product = <core address>` |
+| **Compliance / Certificates** | Manufacturer / authority | UN/hazard class, RoHS/REACH, SDS, UDI/serialization, certificate hashes | `product = <core address>` |
+| **Packaging / UOM hierarchy** | Manufacturer | each/inner/case/pallet GTINs, qty-of-base, conversion factors, catch-weight | `product = <core address>` |
+| **Demand signal (L3)** | Sales / forecast | forecast qty, sales-order lines, dates | `product = <core address>` |
+| **Supply signal (L3)** | Purchasing / production | open PO, production order, due dates | `product = <core address>` |
+
+Each row is a candidate **companion standard** in this repo (`product-plan`, `product-source`,
+`product-bom-line`, `product-cost`, `product-stock`, `product-class`, `product-comp`,
+`product-pack`, plus demand/supply standards). §8 sketches the schemas. The point of this section is
+purely framing: **these are layers, not holes.**
 
 ---
 
-## 2. What an MRP System Actually Requires From Master Data
+## 5. Genuine Base-Layer Gaps in v1 (the short list)
 
-For reference, here is the master-data surface that mature MRP/ERP systems (SAP `MARA`/`MARC`/
-`MBEW`/`MAST`/`STPO`, Oracle Item Master, Dynamics 365 SCM, Infor, NetSuite) treat as
-**mandatory** before a material can be planned:
+Because the master-data standard's job is to be a *stable, shared anchor*, the only legitimate
+critiques are: (a) is it missing an **intrinsic identity** attribute the layers above need to anchor
+on, and (b) does it honour the **contracts** of being a common primary key? There are six, and they
+are small.
 
-| MRP concern | Master data required | In v1? |
+**B1 — Missing `mpn` (Manufacturer Part Number).** In electronics, automotive, and industrial MRO,
+the MPN — not the GTIN — is the real identity key (many parts have no GTIN). Every sourcing and
+cross-reference layer anchors on it. *Intrinsic; belongs in the base.*
+
+**B2 — Missing `mat-type` (material type).** raw / semi-finished / finished / packaging / MRO /
+service. This is intrinsic *and* it is the switch that tells the layers above which of them even
+apply (a service has no BOM or weight). *Intrinsic; belongs in the base.*
+
+**B3 — `uom` should be `base-uom` only.** The base unit the identity is denominated in is intrinsic;
+**conversions and packaging levels are a separate layer** (`product-pack`). v1 conflates the two by
+implying one operational UOM. Narrow the base to `base-uom`. *Intrinsic; belongs in the base.*
+
+**B4 — Weak identifier/cross-reference contract.** B2B interoperability *is* identifier mapping. The
+base should carry the canonical keys (`art-nr`, `mpn`, `gtin`) with validation (GTIN check digit),
+and treat additional cross-references (supplier PN, OEM/aftermarket equivalents) as an upper layer.
+v1 has only `art-nr` + an unvalidated `gtin`. *Base contract.*
+
+**B5 — Queryability & linkage contract (self-`address`).** For a register to be a shared anchor,
+every higher layer must be able to *find and link to* a base record by key. Because the Nexus
+register `address` is auto-assigned and not filterable in the list API, the base record must
+duplicate its address into a queryable field (see §7.1). Without this contract the layered model
+cannot physically link. *Base contract — the single most important fix.*
+
+**B6 — Stewardship & versioning semantics for a *shared* register.** "Common" means many parties
+read and a controlled set may correct. The base needs: a `steward` namespace, a data-quality signal,
+an append-only revision (`rev` + `supersedes`) instead of silent `mutable: true` overwrites, and
+reliance on the namespace tier/reputation for authority. v1 ties everything to the single creating
+sigchain with naive mutability. *Base contract.*
+
+Optionally, **intrinsic substance identifiers** (CAS/UN number for chemicals) are arguably base
+(they describe the material), while the *handling/transport* compliance built on them is a layer
+above (§6). v1's single boolean `hazard` is too coarse for either; the base should carry the
+substance ID and defer hazmat handling to the compliance layer.
+
+That is the complete list. Note what is **not** here: BOM, planning, sourcing, costing, warehouse —
+all correctly excluded as upper layers.
+
+---
+
+## 6. Industry View — Requirements Distributed Across Layers
+
+Different product worlds need very different data, but the layered model holds for all of them: a
+small base-identity footprint, plus heavier reliance on specific upper layers. The point of this
+section is to show that **no industry needs the base layer to grow much** — they need the *right
+layers* above it.
+
+For each domain: **Base layer carries** (intrinsic identity) → **leans on layers** (above).
+
+| Domain | Base layer carries | Leans heavily on layers |
 |---|---|---|
-| **What it is** | Material/part number, description, material *type* (raw, semi-finished, finished, packaging, MRO, service) | Partial — no material *type* |
-| **How it's measured** | Base UOM **+ alternative UOMs with conversion factors** | ❌ single `uom` only |
-| **What it's made of** | **Bill of Materials** (component, qty, scrap %, alternates, effectivity) | ❌ none |
-| **Make or buy** | Procurement type (in-house / external / both) | ❌ none |
-| **When to plan** | Planned delivery (purchasing) lead time, in-house production time, GR processing time | ❌ none |
-| **How much to order** | MRP type, lot-sizing procedure, min/max/fixed lot, rounding value, reorder point, safety stock | ❌ none |
-| **Where from** | Source list / approved vendors, supplier part numbers, MOQ, price breaks, incoterms | ❌ none (only `mfr` name) |
-| **Where it lives** | Plant / site / storage-location context (the *same* part is planned differently per plant) | ❌ flat, single-context |
-| **What it costs** | Standard/moving price, currency, price unit, valuation class | ❌ none |
-| **Quality & batch** | Batch-managed flag, serial profile, inspection setup, certificates, shelf life | Partial — only `perish`, `shelf-days` |
-| **Compliance** | Hazmat (UN number / class / packing group), RoHS/REACH, conflict minerals, certifications | ❌ only a boolean `hazard` |
-| **Versioning** | Engineering revision / ECN with effectivity dates, supersession | Partial — `replaces`/`replaced-by` only |
-| **Classification** | UNSPSC / eCl@ss / ETIM / GPC + flexible characteristic-value attributes | Partial — one `gpc`, one `cat`/`subcat` |
-| **Demand & supply** | Links to forecasts, sales orders, on-hand stock, open POs / production orders | ❌ none (out of scope of a register, but must be referenceable) |
+| **Electronics / components** | `mpn` (key), `mfr`, dimensions, package code | Sourcing/AVL, Compliance (RoHS/REACH/MSL), Classification (ETIM), Attributes |
+| **Chemicals / paints / lubricants** | CAS/UN substance ID, `base-uom`, density | Compliance (hazmat, SDS), Inventory (batch), Packaging/UOM |
+| **Food & beverage** | `gtin`, origin, `base-uom`, net content | Compliance (allergens, nutrition), Inventory (lot/expiry), Classification (GS1 GDSN) |
+| **Pharma / medical devices** | `gtin`/NDC, `mfr`, dosage form | Compliance (serialization/UDI/DSCSA), Inventory (lot/expiry, cold chain) |
+| **Apparel / footwear / textiles** | parent style + variant identity, composition | Classification (variant axes: size/colour), Packaging, Sourcing |
+| **Automotive / MRO** | `mpn`/OEM PN, `mfr`, `rev` | Cross-reference layer (aftermarket equivalents), Sourcing/AVL, BOM, Inventory |
+| **Raw materials / metals** | grade/spec, `base-uom`, density | Packaging/UOM (catch-weight), Compliance (mill certs), Inventory (heat/lot) |
+| **Construction / building** | dimensions, weight, `gpc` | Classification (ETIM), Compliance (DoP/CE), Packaging (pack/pallet) |
+| **Machinery / ETO** | `mpn`, `mat-type`, `rev` | BOM/engineering (multi-level + effectivity), Sourcing, Costing |
+| **Digital goods / services** | `mat-type=service`, version | Sourcing (license/entitlement), Costing (subscription UOM) |
 
-The right-hand column is the gap analysis in miniature. The rest of this document expands it.
+**Cross-industry summary (which layer each capability lives in):**
 
----
+| Capability | Layer | Elec | Chem | Food | Pharma | Apparel | Auto | Metals | Constr | Mach | Digital |
+|---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Identity (mpn/gtin/mat-type) | **Base L1** | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| Bill of Materials | App L2 | – | – | ◐ | ◐ | ◐ | – | – | – | ✔ | – |
+| Sourcing / AVL / lead time | App L2 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ◐ |
+| Planning (lot/lead/safety) | App L2 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ◐ |
+| UOM / packaging hierarchy | App L2 | ◐ | ✔ | ✔ | ◐ | ◐ | ◐ | ✔ | ✔ | ◐ | ✔ |
+| Compliance depth | App L2 | ✔ | ✔ | ✔ | ✔ | ◐ | ◐ | ✔ | ✔ | ◐ | – |
+| Inventory / batch / serial | App L2 | ◐ | ✔ | ✔ | ✔ | – | ✔ | ✔ | ◐ | ✔ | – |
+| Classification / attributes | App L2 | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 
-## 3. The Current Standard at a Glance
-
-`product-standard.json` v1 defines **24 fields** in a single JSON-format Nexus asset
-(~820 bytes of usable space):
-
-- **Identity:** `art-nr`, `gtin`, `mfr`, `brand`, `desc`
-- **Classification:** `cat`, `subcat`, `gpc`, `hs`
-- **Logistics:** `origin`, `uom`, `weight-kg` (grams), `length/width/height-mm`
-- **Handling:** `hazard` (bool), `perish` (bool), `shelf-days`
-- **Lifecycle:** `status`, `replaces`, `replaced-by`
-- **Media:** `url`, `img`
-
-Mutability is binary per field (`mutable: true/false`), and the asset is owned by a single
-namespace. This is a clean **GS1-flavoured trade-item record**. It is *not* a material master.
+✔ = critical · ◐ = important · – = minor. **Only the top row is the base standard's responsibility.**
+Every other row is a companion layer — which is precisely why the base stays small.
 
 ---
 
-## 4. Gap Analysis — Why v1 Is Not Production-Ready for B2B MRP
+## 7. The Base-Layer Standard, Done Right (`product.v2` core)
 
-### 4.1 Structural / architectural gaps
+This section specifies the improved **base layer only** — the small, stable anchor. The upper-layer
+schemas are sketched separately in §8.
 
-**G1 — No Bill of Materials. (The single most important gap.)**
-MRP *is* BOM explosion. Given "build 100 finished units," MRP must walk the parent→child component
-tree, multiply quantities, apply scrap factors, and net each component against stock. v1 has no
-parent-child relationship, no component list, no per-line quantity, no scrap, no alternates.
-Worse, the Nexus constraint "no arrays, no nested objects" means a BOM cannot live *inside* a
-product asset at all — it must be modelled as **separate linked BOM-line assets** (see §6.4).
+### 7.1 Nexus platform grounding (identity, system fields, addressing)
 
-**G2 — Flat, single-context record conflates "what the product is" with "how I plan it."**
-In real MRP the *same* material number carries:
-- **Org-level** data (description, weight, GTIN) — stable, manufacturer-authored.
-- **Plant/site-level** data (lead time, safety stock, MRP controller, lot size) — different at
-  every facility, buyer-authored.
-- **Valuation-level** data (price, currency) — finance-authored.
+The base layer must be correct about how Nexus handles login, identity, and asset creation.
 
-A decentralized B2B system makes this split *more* important, not less: a manufacturer publishes
-the immutable identity, while each buyer/distributor overlays their own planning parameters. v1
-forces everything into one owner's flat asset, so it cannot represent "Acme's part as planned by
-Distributor X in Plant Y."
+**Login is a signature chain (Sigchain).** A user unlocks their Nexus **sigchain** with credentials
+(username + password + PIN). Every `assets/create|update` is a signed transaction appended to the
+owner's sigchain — the sigchain *is* the account ledger. No schema stores credentials.
 
-**G3 — 1KB single-asset ceiling.** Even ignoring BOMs, the breadth of attributes a wide product
-range needs (electronics specs, chemical safety data, food nutrition, pharma serialization) cannot
-fit in ~820 bytes. v1 has no extension mechanism. The schema must become **composable**.
+**Identity has two layers — genesis (machine) vs. namespace (human-readable):**
+- The **genesis hash** is the immutable 256-bit root identity of a sigchain. It does not change when
+  credentials rotate, and Nexus auto-stamps it into every asset's `owner` field. *Genesis = who
+  cryptographically owns the asset.*
+- A **namespace** is a separate, human-readable register owned by a sigchain; Distordia attests
+  tier/reputation to the **namespace**, which resolves to its owning genesis. *Namespace = the
+  attestable, human-readable entity.*
+  → Identity-referencing fields (`mfr`, `steward`) store **namespaces**, never raw genesis hashes;
+  the cryptographic owner is already captured automatically in `owner`.
 
-**G4 — No demand/supply linkage.** A register is not an MRP run, but to *feed* one it must be
-referenceable from demand (forecast, sales order) and supply (stock, open PO, production order)
-objects. v1 defines no stable cross-reference contract for transactional standards to point at —
-beyond the raw asset address, there is no notion of "the planning view" to attach to.
-
-### 4.2 Missing MRP planning fields
-
-**G5 — No procurement type (make / buy / both).** Without it, MRP cannot decide whether to raise a
-planned *production order* or a *purchase requisition*. This is a one-field omission with total
-impact.
-
-**G6 — No lead times.** Time-phasing is impossible. MRP offsets each requirement backward by the
-planned delivery time (buy) or production time (make). Missing entirely.
-
-**G7 — No lot-sizing or netting parameters.** No `safety-stock`, `reorder-point`, `min-lot`,
-`max-lot`, `rounding-value`, `lot-size-procedure`, or `mrp-type`. These convert a raw net
-requirement into an actual, orderable quantity. Their absence reduces any "MRP" built on v1 to
-naive 1:1 reordering.
-
-**G8 — No sourcing / supplier relationships.** `mfr` is a free-text *manufacturer name*, not a
-*procurement source*. MRP needs: which supplier(s) can provide this, their **supplier part
-number**, MOQ, price breaks, lead time, incoterms, and a preference/quota split across multiple
-sources. In a B2B network this is precisely the high-value data — and it is absent.
-
-### 4.3 Identity & interoperability gaps
-
-**G9 — Weak identifier model.** `gtin` is an unvalidated string (no check-digit rule), and there
-is no **MPN** (Manufacturer Part Number — the true key in electronics/industrial), no supplier
-part number, no internal↔external cross-reference. B2B interoperability *is* identifier
-cross-referencing; v1 supports a single GTIN and a single internal `art-nr`.
-
-**G10 — No GS1 packaging hierarchy.** Real trade items have a GTIN *hierarchy*: each / inner-pack /
-case / pallet, each with its own GTIN and dimensions. Logistics and MRP order/consume at different
-levels. v1 models exactly one level.
-
-**G11 — Shallow classification, no crosswalks.** One `gpc` and free-text `cat`/`subcat`. Industrial
-buyers classify by **UNSPSC**, **eCl@ss**, or **ETIM** (electrical), and need a documented
-crosswalk to GS1 GDSN and to ERP field names. v1 references GS1/ISO in prose but ships no mapping.
-
-**G12 — No alignment with ISO 8000 (master-data quality).** A "standard of choice" for B2B master
-data must speak **ISO 8000-110/115/116** (data quality, identifiers, provenance) and ideally
-ISO 22745 (open technical dictionaries). v1 has no provenance, completeness, or accuracy metadata.
-
-### 4.4 Product-domain breadth gaps
-
-**G13 — Fixed 24 fields cannot describe a wide product range.** An electronic component needs
-voltage/tolerance/package/RoHS; a chemical needs CAS number/concentration/SDS; food needs
-allergens/nutrition/storage temperature; apparel needs size/colour/material/care. v1 has **no
-extensible characteristic-value mechanism**, so every new domain either abuses `desc` or cannot be
-represented.
-
-**G14 — Compliance modelled as a single boolean.** `hazard: 0/1` is operationally useless. Shipping
-or storing hazardous goods legally requires **UN number, hazard class, packing group, flash point,
-ADR/IMDG/IATA data**. Likewise there is no RoHS/REACH, conflict-minerals, CE/UL marking,
-allergen, or country-of-origin *certificate* support.
-
-### 4.5 Data-governance gaps for a *common* (shared) register
-
-**G15 — Single-owner model is wrong for a common register.** "Common" implies many parties read,
-contribute, and *correct* the same material. v1 ties every field to the single sigchain (genesis)
-that created the asset — and to the one namespace attested to it. There is
-no concept of **field-level authority** (manufacturer owns identity; each buyer owns their planning
-overlay), no **data-steward role**, no **dispute/correction workflow**, and no **data-quality
-score**. The namespace standard's tiers/reputation/slashing are the right primitives — but the
-product standard does not use them.
-
-**G16 — Naive mutable/immutable flags, no change audit.** Master data legitimately changes
-(corrections, reclassification, dimension updates) — but under controlled, audited change, not
-free mutation. v1 offers only `mutable: true` (silent overwrite, no history) or `mutable: false`
-(frozen forever). Production MRP needs an **append-only revision** model with effectivity dates and
-a change reason.
-
-**G17 — No localization.** `desc` is one string in one language. Global B2B trade needs
-multi-language descriptions and region-specific data.
-
-### 4.6 Lifecycle / engineering-change gaps
-
-**G18 — No engineering revision / effectivity.** Industrial parts carry a drawing revision and
-change orders (ECN/ECO) with **effective-from/to dates**. v1's `replaces`/`replaced-by` capture
-only full-part supersession, not in-part revisions or date-effective BOM/spec changes.
-
----
-
-## 5. Industry-by-Industry Requirements (Wide Product Range)
-
-MRP must serve very different product worlds. The table shows the **critical master-data
-attributes per domain**, whether v1 can express them, and the single biggest blocker.
-
-### 5.1 Electronics & electrical components
-- **Needs:** MPN (primary key), manufacturer + AVL/AML (approved vendor/manufacturer list),
-  lifecycle status (NRND/EOL/active), RoHS/REACH, MSL (moisture sensitivity level), package/case
-  code, electrical params (V/I/tolerance/temp range), datasheet, ETIM class, reel/tape packaging.
-- **v1 coverage:** GTIN, `mfr`, dimensions only. **No MPN, no AVL, no electrical attributes.**
-- **Biggest blocker:** no MPN + no extensible attributes (G9, G13).
-
-### 5.2 Chemicals, paints, lubricants
-- **Needs:** CAS/EC number, UN number + hazard class + packing group, SDS/MSDS link, concentration,
-  GHS pictograms, flash point, storage temp, REACH registration, batch management, shelf life.
-- **v1 coverage:** `hazard` boolean, `shelf-days`, `perish`. **No CAS/UN/hazard-class/SDS.**
-- **Biggest blocker:** boolean hazard is non-compliant for real handling/shipping (G14).
-
-### 5.3 Food & beverage
-- **Needs:** allergen declarations, nutrition (per-100g), ingredients, storage temperature, best-
-  before vs. use-by, GS1 GDSN attributes, lot/batch traceability, origin per ingredient, kosher/
-  halal/organic certs, net content + drained weight.
-- **v1 coverage:** `perish`, `shelf-days`, `origin`, `weight-kg`. **No allergens/nutrition/temp.**
-- **Biggest blocker:** food-safety attributes + multi-level batch traceability (G13, G16).
-
-### 5.4 Pharmaceuticals & medical devices
-- **Needs:** NDC / GTIN-14 + **serialization (GS1 SGTIN, DSCSA/FMD)**, lot + expiry, UDI (medical
-  devices), storage conditions (cold chain), controlled-substance schedule, dosage form/strength,
-  regulatory approval (NDA/CE/FDA), aggregation hierarchy.
-- **v1 coverage:** GTIN, `shelf-days`. **No serialization, no UDI, no lot/expiry contract.**
-- **Biggest blocker:** serialization & regulated traceability (G10, G14, G16).
-
-### 5.5 Apparel, footwear & textiles
-- **Needs:** style/colour/size **variant matrix** (one style → many SKUs), material composition,
-  care instructions, season/collection, fit, GS1 GTIN per variant, country of origin + textile
-  labeling, sustainability/origin certs.
-- **v1 coverage:** one flat SKU. **No variant/parent-style model, no composition.**
-- **Biggest blocker:** variant configuration (parent style + characteristic axes) (G13).
-
-### 5.6 Automotive, industrial spares & MRO
-- **Needs:** OEM part number + aftermarket cross-references, fitment/application data, supersession
-  chains, AML, criticality (for spares stocking), reman/core tracking, serial/lot, drawing
-  revision, country of origin, AVL with lead times.
-- **v1 coverage:** `replaces`/`replaced-by`, `mfr`, `origin`. **No cross-references, no fitment, no
-  AVL/lead time.**
-- **Biggest blocker:** cross-reference web + sourcing/lead-time data (G8, G9, G18).
-
-### 5.7 Raw materials, metals & commodities
-- **Needs:** grade/spec (e.g., AISI 304, ASTM), form (bar/sheet/coil), dimensional tolerances,
-  certificate of analysis / mill cert, **catch-weight / variable UOM** (sold by weight, stocked by
-  piece), heat/lot number, density for conversions, commodity code.
-- **v1 coverage:** single fixed UOM, weight. **No UOM conversions, no catch-weight, no grade/spec.**
-- **Biggest blocker:** UOM conversion + catch-weight + material certs (G4-UOM, i.e. no alt-UOM).
-
-### 5.8 Construction & building materials
-- **Needs:** ETIM classification, technical datasheets, DoP (Declaration of Performance / CE),
-  coverage rate, pack/pallet quantities, weight per unit area, fire/thermal ratings, batch, lead
-  times for made-to-order items.
-- **v1 coverage:** dimensions, weight, `gpc`. **No ETIM, no DoP, no coverage/pack hierarchy.**
-- **Biggest blocker:** packaging hierarchy + technical-attribute breadth (G10, G13).
-
-### 5.9 Machinery, equipment & engineered (ETO) products
-- **Needs:** multi-level BOM, configurable variants, drawing/revision + ECN effectivity, serial
-  numbers, long lead-time component sourcing, in-house production routing reference, service/spare-
-  parts linkage, warranty.
-- **v1 coverage:** none of the structural items. **No BOM, no revision, no routing reference.**
-- **Biggest blocker:** BOM + engineering change management (G1, G18).
-
-### 5.10 Digital goods / software / services
-- **Needs:** license model, version/build, entitlement, no physical dimensions, service UOM (hour/
-  seat/subscription), delivery method.
-- **v1 coverage:** assumes a physical good (weight/dimensions). **No license/version/service UOM.**
-- **Biggest blocker:** material *type* abstraction so non-physical items are first-class (G2-type).
-
-### Cross-industry summary
-
-| Capability | Elec | Chem | Food | Pharma | Apparel | Auto/MRO | Metals | Constr | Machinery | Digital |
-|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| Bill of Materials | – | – | ◐ | ◐ | ◐ | – | – | – | ✔ | – |
-| UOM conversions / catch-weight | ◐ | ✔ | ✔ | ◐ | ◐ | ◐ | ✔ | ✔ | ◐ | ✔ |
-| Sourcing / AVL / lead time | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ◐ |
-| Variant configuration | ◐ | – | – | – | ✔ | ◐ | ✔ | ◐ | ✔ | ◐ |
-| Compliance depth (UN/RoHS/UDI…) | ✔ | ✔ | ✔ | ✔ | ◐ | ◐ | ✔ | ✔ | ◐ | – |
-| Serialization / batch traceability | ◐ | ✔ | ✔ | ✔ | – | ✔ | ✔ | ◐ | ✔ | – |
-| Extensible characteristic attributes | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| Engineering revision / effectivity | ✔ | – | – | ✔ | ◐ | ✔ | ◐ | ◐ | ✔ | ✔ |
-
-✔ = critical · ◐ = important · – = minor. **Every column needs at least three capabilities v1
-lacks.** The four capabilities that appear in nearly every column — *sourcing/lead time*,
-*UOM conversions*, *compliance depth*, and *extensible attributes* — should be the top priorities.
-
----
-
-## 6. Proposed Improvements — A Production-Ready `product.v2`
-
-The fix is **not** "add 40 fields to the flat asset" (impossible under 1KB) but to **normalize the
-model into a small core asset plus address-linked extension assets**, reusing the linked-chain
-pattern already proven by the [Article standard](../standards/article-standard.json) and the
-trust/stewardship primitives of the [Namespace standard](../standards/namespace-standard.json).
-
-### 6.0 Platform grounding — Nexus identity, ownership & system fields
-
-Before redesigning the schema, the proposal must be correct about how Nexus actually handles
-login, identity, and asset creation. These facts constrain every field decision below.
-
-**Login is a signature chain (Sigchain), not an account record.** A user authenticates by
-unlocking their Nexus **signature chain** with credentials (username + password + PIN). Every
-state change — `assets/create/asset`, `assets/update/asset`, transfers — is a transaction
-*appended to and signed by* the owner's sigchain. There is no external account table; the sigchain
-*is* the account ledger. Nothing in a product schema stores credentials; the platform handles auth.
-
-**Identity has two layers: genesis (machine) vs. namespace (human-readable).**
-- The **genesis hash** is the immutable 256-bit (64-hex-char) root identifier of a sigchain — the
-  canonical, cryptographic identity of an account. It does **not** change when the username or
-  credentials rotate. Nexus auto-stamps it into the `owner` field of every asset the sigchain
-  creates. *Genesis answers "who cryptographically owns this asset."*
-- A **namespace** is a separate, human-readable *register* (a registered name) owned by a sigchain.
-  Distordia's trust model attests tier/reputation to the **namespace**, which resolves to its
-  owning genesis. *Namespace answers "which human-readable, attestable entity is this."*
-
-  → Consequence for the schema: identity-referencing fields (`steward`, `supplier`, `mfr`) should
-  store the **namespace** (human-readable and attestable via the namespace standard), **not** a raw
-  genesis hash. The cryptographic owner is already captured automatically in the system `owner`
-  field, so the schema never needs to duplicate the genesis.
-
-**Asset creation auto-assigns system attributes — schemas must not redefine them.** On
-`assets/create/asset`, Nexus assigns and returns, *outside* the user-defined field list:
+**Asset creation auto-assigns system attributes — schemas must not redefine them:**
 
 | System attribute | Meaning |
 |---|---|
-| `address` | Unique register locator (base58, ~51 chars) — the asset's on-chain primary key |
+| `address` | Unique register locator (base58, ~51 chars) — the on-chain primary key |
 | `owner` | Creator's **genesis hash** |
 | `type` / `form` | `OBJECT` / `ASSET` (or `RAW`) |
-| `version` | `1` at create, increments on every update |
+| `version` | `1` at create, increments on each update |
 | `created` / `modified` | Unix timestamps (uint64) |
 
-A standard must **not** declare its own `address`, `owner`, `version`, `created`, or `modified`
-data fields — they are platform-managed. (Where an application genuinely needs a *business* event
-time distinct from the ledger time, name it explicitly, e.g. agent-standard's `created-ts`.)
+**The 1 KB cap includes system overhead.** Total serialized register size ≤ 1 KB; platform fields
+consume **~180 B**, leaving **~820 B** for user data. The self-`address` field below counts against
+that budget.
 
-**The 1 KB cap includes system overhead.** The 1 KB limit is the *total* serialized register size.
-Per the repo's working budget, platform/system fields consume **~180 bytes**, leaving **~820 bytes**
-for user-defined data. Every schema in §6 is budgeted against ~820 bytes (see the budget table in
-§6.3), and the self-`address` field below counts against that allotment.
-
-**Self-`address` convention (REQUIRED for all Distordia assets).** The auto-assigned register
-`address` is the asset's primary key, but on the Distordia register API it is **not returned as a
-filterable column** in `register/list/assets` results — so an asset cannot be *located by* or
-*cross-referenced through* its own address via query. Therefore every asset **duplicates its own
-register address into a normal, queryable `address` field.** Because the address is unknown until
-the create transaction confirms, this is a deliberate **two-step write**:
+**Self-`address` convention (REQUIRED — this is base-contract B5).** The register `address` is the
+primary key but is **not a filterable column** in `register/list/assets`, so an asset cannot be
+located or cross-referenced by its own address through query. Every Distordia asset therefore
+**duplicates its register address into a normal, queryable `address` field**, via a two-step write:
 
 1. `assets/create/asset format=JSON name=… json='[…]'` → Nexus returns the new register `address`.
-2. `assets/update/asset address=<returned-address> address="<returned-address>"` → stamp that value
-   into the asset's own `address` field.
+2. `assets/update/asset address=<returned> address="<returned>"` → stamp it into the `address` field.
 
-The field is therefore `mutable: true` (written exactly once, post-create, then frozen by
-convention). **All inter-asset links** in this proposal (`product`, `parent`, `component`,
-`supersedes`, `next`) store the *target's* duplicated `address` value, so any consumer resolves a
-link with `WHERE address = '<value>'`. *Caveat:* if a node build rejects a user field literally
-named `address` (reserved-name collision with the system attribute), use `self-addr` consistently
-instead — the convention is otherwise identical.
+`address` is thus `mutable: true` (written once, post-create). **Every upper-layer link** (`product`,
+`parent`, `component`, `supersedes`, `next`) stores the *target's* `address` value, resolved with
+`WHERE address = '<value>'`. *Caveat:* if a node rejects a user field literally named `address`
+(reserved-name collision), use `self-addr` consistently — same convention.
 
-### 6.1 Design principles
+### 7.2 Proposed base-layer schema
 
-1. **Separate identity from planning.** Manufacturer publishes the (mostly) immutable *core*; each
-   buyer attaches their own *planning overlay*. This is what makes the register genuinely *common*.
-2. **Composable, not monolithic.** Optional concerns (BOM, sourcing, costing, compliance,
-   classification, packaging levels) are separate asset types. Linkage points *upward*: each
-   extension stores the core's `address` in its `product` field, and is found by querying that
-   field — so the core never has to be rewritten when an extension is added.
-3. **Append-only change history.** A revision is a *new* asset whose `supersedes` holds the prior
-   asset's `address`; the chain *is* the audit trail. The platform's auto `version`/`modified`
-   covers in-place edits to mutable fields; `supersedes` covers structural revisions. Stop
-   overloading `mutable: true` as a substitute for history.
-4. **Field-level authority via namespaces.** Each asset is owned by the sigchain (genesis) that
-   created it and is attributed to a human-readable **namespace** carrying tier/reputation from the
-   namespace standard — so the manufacturer's core and a buyer's overlay are independently
-   authored and independently trusted.
-5. **Interoperability first.** Every field carries a documented crosswalk to GS1 GDSN, UNSPSC/
-   eCl@ss/ETIM, ISO 8000, and common ERP field names (Appendix A).
-
-### 6.2 Asset family
-
-```
-                       ┌───────────────────────────┐
-                       │   product (core, v2)       │  ← manufacturer-owned, mostly immutable
-                       │   identity + base logistics│     carries self-`address` (its primary key)
-                       └───────────────────────────┘
-                                     ▲
-                       each extension stores the core's `address`
-                       in its `product` field (links point UP)
-   ┌──────────────┬──────────────┬───┴───────┬──────────────┬───────────────┐
-   │              │              │            │              │               │
-product-plan   product-source product-cost product-comp product-class   product-pack
-(buyer/plant)  (supplier/AVL) (valuation)  (compliance) (UNSPSC/ETIM…)  (GTIN hierarchy)
-   │
-   ▼
-product-bom-line  (one asset per BOM component; chained via `next` — solves "no arrays")
-```
-
-Linkage is **upward and query-resolved**: extensions reference the core by its self-`address`; the
-core holds no list of children, so adding an extension never rewrites the core. To assemble a full
-view, query `WHERE product = '<core-address>'`.
-
-### 6.3 Proposed core schema (`product.v2`)
-
-Additions to v1 are **bold**; the asset stays within 1 KB (including the ~180 B system overhead and
-the self-`address` field) by pushing optional data to extensions. The `address` field is stamped in
-the post-create step described in §6.0.
+Additions to v1 are **bold**; the record stays a lean identity anchor and pushes everything
+relational to the layers above.
 
 ```json
 [
@@ -422,7 +313,6 @@ the post-create step described in §6.0.
   {"name":"mpn","type":"string","value":"","mutable":false,"maxlength":40},
   {"name":"gtin","type":"string","value":"","mutable":false,"maxlength":14},
   {"name":"mat-type","type":"string","value":"finished","mutable":false,"maxlength":12},
-  {"name":"proc-type","type":"string","value":"buy","mutable":true,"maxlength":4},
   {"name":"desc","type":"string","value":"","mutable":true,"maxlength":128},
   {"name":"mfr","type":"string","value":"","mutable":false,"maxlength":40},
   {"name":"brand","type":"string","value":"","mutable":false,"maxlength":32},
@@ -442,52 +332,70 @@ the post-create step described in §6.0.
 ]
 ```
 
-Key changes vs v1:
-- **`address`** — self-stamped copy of the register address (see §6.0). Required for the asset to be
-  found by query and for extensions to link to it.
-- **`mpn`, `mat-type`, `proc-type`** — the three single-field omissions that block MRP (G5, G9,
-  and the make/buy/type distinction of G2). `mfr`/`steward` store **namespaces**, not genesis hashes.
-- **`base-uom`** replaces `uom`; conversions live in the `product-pack`/UOM extension (G-UOM).
-- **`rev` + `supersedes`** — engineering revision and append-only chaining (G16, G18); `supersedes`
-  holds the prior asset's `address`.
-- **`steward`, `dq-score`** — data-governance hooks tied to namespace tiers (G15, G12).
-- **No `ext` list.** Extensions link *upward* to the core (principle 2), so the core needs no child
-  list — this also frees ~256 B and means adding an extension never rewrites the core.
-- Dropped from core (moved to extensions): `cat/subcat` → classification; `url/img` → media/class;
-  `hazard/perish/shelf-days` → compliance; `replaces/replaced-by` → superseded by `rev`/`supersedes`.
+This implements exactly the six base-layer fixes of §5 and nothing more:
+- **`address`** (B5) — queryable self-address; the linchpin of the layered model.
+- **`mpn`** (B1), **`mat-type`** (B2), **`base-uom`** (B3) — intrinsic identity additions.
+- **`mfr`/`steward`** store **namespaces** (B4/B6); validated `gtin` + `art-nr` are the keys.
+- **`rev` + `supersedes` + `dq-score`** (B6) — append-only revision and stewardship signal.
+- Moved *out* to upper layers: `cat/subcat`→classification, `url/img`→media/classification,
+  `hazard/perish/shelf-days`→compliance, `replaces/replaced-by`→`rev`/`supersedes`, all UOM
+  conversion/packaging→`product-pack`.
 
-**1 KB budget check (core v2):**
+**1 KB budget check (base v2):**
 
 | Bucket | Bytes (approx.) |
 |---|---|
 | System/platform fields (`address`-locator, `owner`, `type`, `form`, `version`, `created`, `modified`) | ~180 reserved |
-| Core user fields — field names + structural overhead (25 fields) | ~290 |
-| Core user fields — values at *typical* fill (GTIN 13, MPN ~16, desc ~60, address 51, codes short) | ~330 |
-| **Typical total** | **~800 / 1024** ✅ |
-| Core user fields — values at *worst-case* maxlength | ~570 |
-| **Worst-case total** | **~1040** ⚠️ tune `desc` |
+| User fields — names + structural overhead (24 fields) | ~280 |
+| User fields — values at *typical* fill (gtin 13, mpn ~16, desc ~60, address 51, codes short) | ~320 |
+| **Typical total** | **~780 / 1024** ✅ |
+| User fields — values at *worst-case* maxlength | ~540 |
+| **Worst-case total** | **~1000** — fits, `desc` is the swing field |
 
-Immutable string fields store their *actual* (usually short) length, so real assets land
-comfortably under 1 KB. `desc` (the only large mutable string) is the swing field: at 128 it fits
-the typical case; if a node build pre-allocates mutable fields to `maxlength`, trim `desc` to ~96 or
-move the long description to a `product-class`/media extension.
+Immutable string fields store their actual (short) length, so real records sit well under 1 KB.
+`desc` is the only large mutable string; trim to ~96 if your node pre-allocates mutable fields.
 
-### 6.4 Extension asset types
+---
 
-Every extension follows the §6.0 conventions: it is created by its authoring sigchain, carries its
-own self-`address` field (omitted below for brevity except where another asset links to it), and
-references the core via `product` = the core's `address`. Identity fields hold **namespaces**.
+## 8. Companion-Standard Sketches (the layers above)
 
-**`product-plan` (plant/buyer planning overlay — the heart of MRP).** Owned by the *buyer*, not the
-manufacturer.
+Each upper layer is its own asset type/standard, owned by the authoring party, carrying its own
+self-`address`, and linking to the base via `product = <core address>` (BOM via `parent`). These are
+**separate standards**, developed independently of the master-data standard — adding them never
+touches the base record.
+
+```mermaid
+flowchart TB
+    CORE["product (base, L1)<br/>self-address = primary key"]
+    PLAN["product-plan<br/>(buyer / plant)"]
+    SRC["product-source<br/>(supplier / AVL)"]
+    BOM["product-bom-line<br/>(chained via next)"]
+    CMP["product-comp<br/>(compliance)"]
+    CLS["product-class<br/>(UNSPSC / ETIM / attrs)"]
+    PCK["product-pack<br/>(GTIN / UOM hierarchy)"]
+    CST["product-cost<br/>(valuation)"]
+    INV["product-stock<br/>(inventory / warehouse)"]
+
+    PLAN -->|product = core.address| CORE
+    SRC  -->|product = core.address| CORE
+    BOM  -->|parent = core.address| CORE
+    CMP  -->|product = core.address| CORE
+    CLS  -->|product = core.address| CORE
+    PCK  -->|product = core.address| CORE
+    CST  -->|product = core.address| CORE
+    INV  -->|product = core.address| CORE
+```
+
+**`product-plan` (Planning layer — buyer/plant owned).** The asset that turns the catalogue into
+something *plannable*.
 ```json
 [
-  {"name":"distordia-type","type":"string","value":"product-plan","mutable":false},
-  {"name":"address","type":"string","value":"","mutable":true,"maxlength":56},
-  {"name":"product","type":"string","value":"<core-address>","mutable":false,"maxlength":56},
-  {"name":"plant","type":"string","value":"","mutable":false,"maxlength":16},
-  {"name":"mrp-type","type":"string","value":"PD","mutable":true,"maxlength":4},
-  {"name":"lot-proc","type":"string","value":"EX","mutable":true,"maxlength":4},
+  {"name":"distordia-type","value":"product-plan","mutable":false},
+  {"name":"address","value":"","mutable":true,"maxlength":56},
+  {"name":"product","value":"<core-address>","mutable":false,"maxlength":56},
+  {"name":"plant","value":"","mutable":false,"maxlength":16},
+  {"name":"mrp-type","value":"PD","mutable":true,"maxlength":4},
+  {"name":"lot-proc","value":"EX","mutable":true,"maxlength":4},
   {"name":"lead-buy-d","type":"uint16","value":0,"mutable":true},
   {"name":"lead-make-d","type":"uint16","value":0,"mutable":true},
   {"name":"gr-proc-d","type":"uint16","value":0,"mutable":true},
@@ -496,13 +404,11 @@ manufacturer.
   {"name":"min-lot","type":"uint32","value":0,"mutable":true},
   {"name":"max-lot","type":"uint32","value":0,"mutable":true},
   {"name":"round-val","type":"uint32","value":0,"mutable":true},
-  {"name":"mrp-ctrl","type":"string","value":"","mutable":true,"maxlength":8}
+  {"name":"mrp-ctrl","value":"","mutable":true,"maxlength":8}
 ]
 ```
-*This single extension is what upgrades the register from "catalog" to "plannable" (closes G5–G7).*
 
-**`product-source` (sourcing / AVL — one per supplier).** Closes G8. `supplier` is a **namespace**
-(attestable via the namespace standard), not a genesis hash.
+**`product-source` (Sourcing layer — one per supplier).** `supplier` is a **namespace**.
 ```json
 [
   {"name":"distordia-type","value":"product-source"},
@@ -521,9 +427,8 @@ manufacturer.
 ]
 ```
 
-**`product-bom-line` (one asset per component — solves "no arrays").** Closes G1. BOM lines chain
-via `next`, exactly like article chunks. Because lines link to each other, each carries its
-self-`address`; `parent`/`component`/`next` all store the *target's* `address`.
+**`product-bom-line` (BOM/engineering layer — one asset per component; solves "no arrays").** Lines
+chain via `next` like article chunks; each carries its self-`address`.
 ```json
 [
   {"name":"distordia-type","value":"product-bom-line"},
@@ -539,102 +444,95 @@ self-`address`; `parent`/`component`/`next` all store the *target's* `address`.
   {"name":"next","value":"<address-of-next-bom-line>"}
 ]
 ```
-(`qty-milli` = quantity ×1000 to avoid floats; `scrap-bps` = basis points. To find a product's BOM:
-`WHERE parent = '<core-address>'`, then walk `next`.)
+(`qty-milli` = qty ×1000; `scrap-bps` = basis points. Find a BOM: `WHERE parent = '<core-address>'`,
+then walk `next`.)
 
-**`product-comp` (compliance).** Real hazmat + regulatory, closing G14: `un-number`,
-`hazard-class`, `packing-group`, `sds-url`, `sds-hash`, `rohs` (0/1), `reach` (0/1),
-`cas`, `allergens`, `udi`, `cert-list` (pipe-separated certificate addresses).
-
-**`product-class` (classification).** Multiple coded schemes, closing G11: `unspsc`, `eclass`,
-`etim`, `cat`, `subcat`, plus `attrs` (a `key=value;key=value` characteristic string for the
-extensible attributes of G13). For deep attribute sets, point to a `raw`-format asset (like the
-NexGo rating standard) that can hold nested JSON.
-
-**`product-pack` (GTIN/packaging hierarchy + UOM conversions).** One per packaging level, closing
-G10 and the UOM-conversion gap: `level` (each/inner/case/pallet), `gtin`, `qty-of-base`,
-`uom`, `to-base-factor`, dimensions, `weight-g`, `catch-weight` (0/1).
-
-### 6.5 Governance & trust model (making it a *common* register)
-
-- **Field-level authority:** core identity must be created by an **L2+ organization** namespace
-  (manufacturer/brand owner); `product-plan`/`product-source` overlays may be created by any
-  verified buyer namespace and reference the core by address. Readers resolve "the planning view
-  for *my* namespace" by filtering extensions on owner.
-- **Data-quality score (`dq-score`, 0–1000):** computed from completeness (mandatory fields
-  present), validity (GTIN check digit, ISO code membership, HS format), and stewardship tier of
-  the author — mirroring **ISO 8000-61** data-quality dimensions.
-- **Corrections & disputes:** reuse namespace **reputation/slashing**. A correction is a new
-  superseding asset; a disputed record can be flagged via a lightweight `product-flag` raw asset,
-  with stake at risk (same mechanic as swarm mission disputes).
-- **Provenance:** `steward`, `rev`, `supersedes`, and the create timestamp give ISO 8000-115
-  provenance out of the box.
-
-### 6.6 Validation, conformance & reference data (the "production-ready" checklist)
-
-To be *the standard of choice*, v2 should ship more than a schema:
-
-1. **Validation rules** — GTIN/EAN check-digit, ISO 3166 country, ISO 4217 currency, HS-code
-   format, GPC/UNSPSC membership, UOM against a published code list.
-2. **Reference-data registries** — on-chain (or canonically published) lists for UOM, currency,
-   incoterms, hazard classes, classification schemes — so values are *codes*, not free text.
-3. **Conformance test suite** — golden example assets per industry (the ten domains in §5) plus
-   negative tests, so any implementer can self-certify.
-4. **Crosswalk tables** — GS1 GDSN, UNSPSC/eCl@ss/ETIM, ISO 8000, SAP/Oracle field maps
-   (Appendix A) for migration and EDI/PRICAT interchange.
-5. **Schema governance** — semantic versioning, a deprecation policy, and backward-compatible
-   field additions (the `schema-ver` field enables this).
-
-### 6.7 Maturity roadmap (incremental, non-breaking)
-
-| Level | Adds | Unlocks |
-|---|---|---|
-| **M0 (today, v1)** | flat catalog record | universal product reference |
-| **M1** | core v2 + `mpn`, `mat-type`, `proc-type`, `base-uom`, `rev` | correct identity & make/buy |
-| **M2** | `product-plan` extension | **first real MRP** (netting + time-phasing + lot-sizing) |
-| **M3** | `product-source` + `product-pack`/UOM | multi-source procurement, packaging hierarchy |
-| **M4** | `product-bom-line` chains | BOM explosion → manufacturing MRP |
-| **M5** | `product-comp` + `product-class` + governance/DQ | regulated industries + *common* trust |
-
-M1–M2 alone move the standard from "catalog" to "minimum viable MRP," and both are additive (the
-v1 asset remains valid as the core's ancestor).
+**Other layers (same pattern, schemas analogous):**
+- **`product-comp` (Compliance):** `un-number`, `hazard-class`, `packing-group`, `sds-url`/`sds-hash`,
+  `rohs`, `reach`, `cas`, `allergens`, `udi`, `cert-list` (pipe-separated certificate addresses).
+- **`product-class` (Classification & attributes):** `unspsc`, `eclass`, `etim`, `cat`, `subcat`,
+  and `attrs` (`key=value;…`); for deep attribute sets, point to a `raw`-format asset (à la the
+  NexGo rating standard) that allows nested JSON.
+- **`product-pack` (Packaging / UOM hierarchy):** one per level — `level` (each/inner/case/pallet),
+  `gtin`, `qty-of-base`, `uom`, `to-base-factor`, dimensions, `weight-g`, `catch-weight`.
+- **`product-cost` (Valuation):** `price`, `currency`, `price-unit`, `valuation-class`, `plant`.
+- **`product-stock` (Inventory):** `plant`, `location`, `batch`, `serial`, `on-hand`, `status`.
 
 ---
 
-## 7. Conclusion
+## 9. Governance, Validation & Roadmap
 
-The Distordia product standard is a **solid foundation and a poor MRP standard** — not because it
-is badly designed, but because it was scoped as a *trade-item catalog* and is being asked to be a
-*material master*. The decisive missing pieces are structural: **bills of material, planning
-parameters, sourcing, multi-plant context, and UOM conversions**, none of which fit a flat 1KB
-asset and none of which v1 attempts.
+### 9.1 Governance for a *common* (shared) register
+- **Base layer:** the core identity must be created by an **L2+ organization** namespace
+  (manufacturer/brand owner). The base is mostly immutable; corrections are append-only via
+  `rev`/`supersedes`.
+- **Upper layers:** any verified namespace may attach its own overlay (`product-plan`,
+  `product-source`, …) referencing the base — this is what makes the register *common*. A consumer
+  selects "the planning view for *my* namespace" by filtering overlays on owner.
+- **Trust & disputes:** reuse the namespace standard's **tier / reputation / slashing**. A disputed
+  record is flagged via a lightweight `product-flag` raw asset with stake at risk (same mechanic as
+  swarm mission disputes).
+- **Data quality (`dq-score`, 0–1000):** completeness + validity (GTIN check digit, ISO code
+  membership, HS format) + steward tier, mirroring **ISO 8000-61** dimensions; provenance via
+  `steward`/`rev`/`supersedes` + system `created` satisfies **ISO 8000-115**.
 
-The path to production is clear and, crucially, **already idiomatic to this ecosystem**: keep the
-small immutable core, and use the **linked-extension-asset** pattern (proven by Articles) plus the
-**namespace tier/reputation** governance (proven by the identity layer) to compose planning,
-sourcing, costing, compliance, classification, packaging, and BOM as separate, individually-owned,
-append-only assets. Doing so closes every gap in §4, satisfies every industry column in §5, and —
-by separating "what the product is" (manufacturer-owned) from "how I plan it" (buyer-owned) — turns
-the register into something a B2B network can genuinely *share*: a **common MRP backbone** rather
-than a single owner's catalog.
+### 9.2 Production-readiness checklist
+1. **Validation rules** — GTIN/EAN check digit, ISO 3166 country, ISO 4217 currency, HS format,
+   GPC membership, UOM code list.
+2. **Reference-data registries** — published code lists (UOM, currency, incoterm, hazard class,
+   classification schemes) so values are *codes*, not free text.
+3. **Conformance suite** — golden base + per-layer example assets for the ten domains in §6, plus
+   negative tests, for self-certification.
+4. **Crosswalks** — GS1 GDSN, UNSPSC/eCl@ss/ETIM, ISO 8000, SAP/Oracle (Appendix A).
+5. **Schema governance** — semantic versioning (`schema-ver`), deprecation policy, additive-only
+   field changes.
+
+### 9.3 Roadmap (base first, then layers — all additive)
+
+| Level | Adds | Unlocks |
+|---|---|---|
+| **M0 (today, v1)** | flat catalogue record | universal product reference |
+| **M1 — solid base** | v2 core: `address`, `mpn`, `mat-type`, `base-uom`, `rev`, stewardship | a stable, queryable, trustworthy **anchor** |
+| **M2 — Planning layer** | `product-plan` | **first real MRP** (netting + time-phasing + lot-sizing) |
+| **M3 — Sourcing + Packaging** | `product-source`, `product-pack` | multi-source procurement, UOM/packaging |
+| **M4 — BOM layer** | `product-bom-line` chains | BOM explosion → manufacturing MRP |
+| **M5 — Compliance + Class + Signals** | `product-comp`, `product-class`, demand/supply | regulated industries + full common stack |
+
+M1 is the only change to the **master-data standard itself**; M2–M5 are *new companion standards*
+that leave the base untouched.
+
+---
+
+## 10. Conclusion
+
+The Distordia product standard is **correctly scoped as a base layer**: a minimal, stable,
+manufacturer-authored product identity register. That minimalism is the feature that lets a
+decentralized B2B network *share* it — every other concern stacks on top as a separate, independently
+owned register that references the base by address.
+
+So the right critique is narrow. The base needs **six small fixes** (§5): a queryable self-address,
+`mpn`, `mat-type`, `base-uom`, validated identifiers, and shared-register stewardship/versioning.
+With those, the base is production-ready *as a base*. Everything else MRP requires — BOM, sourcing,
+planning, costing, warehouse, compliance — is **not** master data and should never be pushed into it;
+it belongs to the companion layers sketched in §8 and diagrammed in §2. Build the anchor well, keep
+it small, and let the MRP stack grow upward.
 
 ---
 
 ## Appendix A — Interoperability Crosswalk (illustrative)
 
-| Distordia v2 | GS1 GDSN | UNSPSC/eCl@ss/ETIM | ISO | SAP | Oracle |
-|---|---|---|---|---|---|
-| `gtin` | `gtin` | — | GS1 | `EAN11` | Item Cross Ref |
-| `mpn` | `manufacturerPartNumber` | — | — | `MFRPN` | Mfg Part Number |
-| `mat-type` | `tradeItemUnitDescriptor` | — | — | `MTART` | Item Type |
-| `proc-type` | — | — | — | `BESKZ` | Make/Buy |
-| `base-uom` | `baseUnitOfMeasure` | — | ISO 80000 / UN/ECE Rec 20 | `MEINS` | Primary UOM |
-| `product-plan.lead-buy-d` | — | — | — | `PLIFZ` | Lead Time |
-| `product-plan.safety-stock` | — | — | — | `EISBE` | Safety Stock |
-| `product-source.moq` | — | — | — | `BSTMI` | Min Order Qty |
-| `product-class.unspsc` | `gpcCategoryCode` (GPC) | UNSPSC / eCl@ss / ETIM | ISO 22745 | `PRDHA` | Category |
-| `product-comp.un-number` | `dangerousGoodsUNNumber` | — | UN ADR | — | Hazard Class |
-| `dq-score` | — | — | **ISO 8000-61** | — | — |
+| Distordia | Layer | GS1 GDSN | UNSPSC/eCl@ss/ETIM | ISO | SAP | Oracle |
+|---|---|---|---|---|---|---|
+| `gtin` | Base | `gtin` | — | GS1 | `EAN11` | Item Cross Ref |
+| `mpn` | Base | `manufacturerPartNumber` | — | — | `MFRPN` | Mfg Part Number |
+| `mat-type` | Base | `tradeItemUnitDescriptor` | — | — | `MTART` | Item Type |
+| `base-uom` | Base | `baseUnitOfMeasure` | — | ISO 80000 / UN/ECE Rec 20 | `MEINS` | Primary UOM |
+| `product-plan.lead-buy-d` | L2 | — | — | — | `PLIFZ` | Lead Time |
+| `product-plan.safety-stock` | L2 | — | — | — | `EISBE` | Safety Stock |
+| `product-source.moq` | L2 | — | — | — | `BSTMI` | Min Order Qty |
+| `product-class.unspsc` | L2 | `gpcCategoryCode` | UNSPSC / eCl@ss / ETIM | ISO 22745 | `PRDHA` | Category |
+| `product-comp.un-number` | L2 | `dangerousGoodsUNNumber` | — | UN ADR | — | Hazard Class |
+| `dq-score` | Base | — | — | **ISO 8000-61** | — | — |
 
-*(Crosswalk is illustrative; a production release should publish authoritative, versioned mapping
-tables per Appendix A scheme.)*
+*(Illustrative; a production release should publish authoritative, versioned mapping tables per
+scheme.)*

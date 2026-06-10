@@ -230,7 +230,7 @@ Supports threading (replies), quotes, reposts, media attachments, hashtags, ment
 
 Products are registered as immutable, timestamped blockchain assets. Each product gets a unique on-chain address that serves as a universal reference across ERP and supply chain systems.
 
-> **In-depth review:** [Product Masterdata vs. Industrial MRP Needs](docs/product-masterdata-mrp-analysis.md) — a gap analysis of this standard against the requirements of a decentralized, B2B, common MRP system, with a proposed production-ready `product.v2` redesign.
+> **In-depth review:** [Product Master Data as the Base Layer of a Decentralized MRP Stack](docs/product-masterdata-mrp-analysis.md) — frames this standard as the minimal, stable product-identity base layer, draws the line between base-layer data and the MRP application layers (BOM, sourcing, planning, warehouse…) that stack on top, and proposes the small set of base-layer improvements plus a layered companion-standard model.
 
 **Key fields:**
 
