@@ -7,6 +7,7 @@
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [
     { "name": "distordia-type", "type": "string", "value": "distordia-post", "mutable": false, "maxlength": 16 },
+    { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
     { "name": "distordia-status", "type": "string", "value": "user-post", "mutable": true, "maxlength": 16 },
     { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 512 },
     { "name": "cw", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
@@ -29,6 +30,9 @@
   "fieldDefinitions": {
     "distordia-type": {
       "description": "Asset type identifier. Must be 'distordia-post'."
+    },
+    "self-addr": {
+      "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. Stamped in by a post-create update (mutable, written once, then immutable by convention)."
     },
     "distordia-status": {
       "description": "Post status.",
@@ -99,6 +103,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "distordia-post",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
       "distordia-status": "user-post",
       "text": "Just deployed my first smart contract on Nexus!",
       "tags": "blockchain,nexus,web3",
@@ -114,6 +119,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "distordia-post",
+      "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
       "distordia-status": "user-post",
       "text": "What feature should we prioritize next?",
       "poll-q": "What feature should we prioritize next?",

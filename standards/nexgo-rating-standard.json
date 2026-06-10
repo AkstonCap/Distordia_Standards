@@ -13,6 +13,10 @@
         "value": "nexgo-rating",
         "description": "Asset type identifier. Must be 'nexgo-rating'."
       },
+      "self-addr": {
+        "type": "string",
+        "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. For raw assets it is written into the data blob when the payload is first created (written once, then immutable by convention)."
+      },
       "ratings": {
         "type": "object",
         "description": "Map of driver genesis hashes to rating entries. Each key is a Nexus genesis hash identifying a driver.",
@@ -57,7 +61,7 @@
       "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
       "type": "OBJECT",
       "form": "RAW",
-      "data": "{\"distordia-type\":\"nexgo-rating\",\"ratings\":{\"b2d8c799fef322b3d25ec5b85999f1de\":{\"score\":4,\"avoid\":false},\"c3e9d800gfg433c4e36fd6c96aaa02ef\":{\"score\":1,\"avoid\":true}}}"
+      "data": "{\"distordia-type\":\"nexgo-rating\",\"self-addr\":\"87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx\",\"ratings\":{\"b2d8c799fef322b3d25ec5b85999f1de\":{\"score\":4,\"avoid\":false},\"c3e9d800gfg433c4e36fd6c96aaa02ef\":{\"score\":1,\"avoid\":true}}}"
     }
   ],
   "nexus": {

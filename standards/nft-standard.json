@@ -7,6 +7,7 @@
   "maxSize": "1KB (system fields ~180 bytes, ~820 bytes available)",
   "nexusFields": [
     { "name": "distordia-type", "type": "string", "value": "nft", "mutable": false, "maxlength": 16 },
+    { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
     { "name": "status", "type": "string", "value": "active", "mutable": true, "maxlength": 12 },
     { "name": "nft-name", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
     { "name": "description", "type": "string", "value": "", "mutable": true, "maxlength": 256 },
@@ -20,6 +21,9 @@
     "distordia-type": {
       "description": "Asset type identifier. Must be 'nft'.",
       "enum": ["nft"]
+    },
+    "self-addr": {
+      "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. Stamped in by a post-create update (mutable, written once, then immutable by convention)."
     },
     "status": {
       "description": "Lifecycle status of the NFT.",
@@ -103,6 +107,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "nft",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
       "status": "active",
       "nft-name": "Cosmic Dragon #42",
       "description": "A rare cosmic dragon from the Distordia Originals collection",
@@ -118,6 +123,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "nft",
+      "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
       "status": "active",
       "nft-name": "Rare Gem",
       "image": "https://images.example.com/rare-gem.png",

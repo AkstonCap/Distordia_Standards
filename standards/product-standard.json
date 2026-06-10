@@ -7,6 +7,7 @@
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [
     { "name": "distordia-type", "type": "string", "value": "product", "mutable": false, "maxlength": 16 },
+    { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
     { "name": "status", "type": "string", "value": "valid", "mutable": true, "maxlength": 8 },
     { "name": "art-nr", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
     { "name": "gtin", "type": "string", "value": "", "mutable": false, "maxlength": 14 },
@@ -34,6 +35,9 @@
   "fieldDefinitions": {
     "distordia-type": {
       "description": "Asset type identifier. Must be 'product'."
+    },
+    "self-addr": {
+      "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. Stamped in by a post-create update (mutable, written once, then immutable by convention)."
     },
     "status": {
       "description": "Product lifecycle status.",
@@ -119,6 +123,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "product",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
       "status": "valid",
       "art-nr": "WIDGET-2000-BLK",
       "gtin": "5901234123457",
