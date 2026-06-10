@@ -144,16 +144,16 @@ see the *whole* MRP picture **without** importing any of it into the base standa
 
 | Application layer | Owns / authors | Key data | References base via |
 |---|---|---|---|
-| **Planning** | Buyer / plant | MRP type, planned delivery + production lead time, GR time, safety stock, reorder point, min/max/rounding lot | `product = <core address>` |
-| **Sourcing / Procurement** | Supplier (per source) | supplier namespace, supplier PN, MOQ, price + currency, lead time, incoterm, preference/quota | `product = <core address>` |
-| **BOM / Engineering** | Designing org | parent↔component links, qty, scrap, alternates, revision effectivity | `parent = <core address>` |
-| **Costing / Valuation** | Finance org | standard/moving price, price unit, currency, valuation class | `product = <core address>` |
-| **Inventory / Warehouse** | Stock-holder / plant | on-hand, location/bin, batch, serial, status | `product = <core address>` |
-| **Classification & Attributes** | Catalogue steward | UNSPSC/eCl@ss/ETIM codes, characteristic key-values | `product = <core address>` |
-| **Compliance / Certificates** | Manufacturer / authority | UN/hazard class, RoHS/REACH, SDS, UDI/serialization, certificate hashes | `product = <core address>` |
-| **Packaging / UOM hierarchy** | Manufacturer | each/inner/case/pallet GTINs, qty-of-base, conversion factors, catch-weight | `product = <core address>` |
-| **Demand signal (L3)** | Sales / forecast | forecast qty, sales-order lines, dates | `product = <core address>` |
-| **Supply signal (L3)** | Purchasing / production | open PO, production order, due dates | `product = <core address>` |
+| **Planning** | Buyer / plant | MRP type, planned delivery + production lead time, GR time, safety stock, reorder point, min/max/rounding lot | `product = <core self-addr>` |
+| **Sourcing / Procurement** | Supplier (per source) | supplier namespace, supplier PN, MOQ, price + currency, lead time, incoterm, preference/quota | `product = <core self-addr>` |
+| **BOM / Engineering** | Designing org | parent↔component links, qty, scrap, alternates, revision effectivity | `parent = <core self-addr>` |
+| **Costing / Valuation** | Finance org | standard/moving price, price unit, currency, valuation class | `product = <core self-addr>` |
+| **Inventory / Warehouse** | Stock-holder / plant | on-hand, location/bin, batch, serial, status | `product = <core self-addr>` |
+| **Classification & Attributes** | Catalogue steward | UNSPSC/eCl@ss/ETIM codes, characteristic key-values | `product = <core self-addr>` |
+| **Compliance / Certificates** | Manufacturer / authority | UN/hazard class, RoHS/REACH, SDS, UDI/serialization, certificate hashes | `product = <core self-addr>` |
+| **Packaging / UOM hierarchy** | Manufacturer | each/inner/case/pallet GTINs, qty-of-base, conversion factors, catch-weight | `product = <core self-addr>` |
+| **Demand signal (L3)** | Sales / forecast | forecast qty, sales-order lines, dates | `product = <core self-addr>` |
+| **Supply signal (L3)** | Purchasing / production | open PO, production order, due dates | `product = <core self-addr>` |
 
 Each row is a candidate **companion standard** in this repo (`product-plan`, `product-source`,
 `product-bom-line`, `product-cost`, `product-stock`, `product-class`, `product-comp`,
@@ -186,10 +186,10 @@ base should carry the canonical keys (`art-nr`, `mpn`, `gtin`) with validation (
 and treat additional cross-references (supplier PN, OEM/aftermarket equivalents) as an upper layer.
 v1 has only `art-nr` + an unvalidated `gtin`. *Base contract.*
 
-**B5 — Queryability & linkage contract (self-`address`).** For a register to be a shared anchor,
+**B5 — Queryability & linkage contract (`self-addr`).** For a register to be a shared anchor,
 every higher layer must be able to *find and link to* a base record by key. Because the Nexus
 register `address` is auto-assigned and not filterable in the list API, the base record must
-duplicate its address into a queryable field (see §7.1). Without this contract the layered model
+duplicate its address into a queryable field named `self-addr` (see §7.1). Without this contract the layered model
 cannot physically link. *Base contract — the single most important fix.*
 
 **B6 — Stewardship & versioning semantics for a *shared* register.** "Common" means many parties
@@ -282,21 +282,26 @@ owner's sigchain — the sigchain *is* the account ledger. No schema stores cred
 | `created` / `modified` | Unix timestamps (uint64) |
 
 **The 1 KB cap includes system overhead.** Total serialized register size ≤ 1 KB; platform fields
-consume **~180 B**, leaving **~820 B** for user data. The self-`address` field below counts against
+consume **~180 B**, leaving **~820 B** for user data. The `self-addr` field below counts against
 that budget.
 
-**Self-`address` convention (REQUIRED — this is base-contract B5).** The register `address` is the
-primary key but is **not a filterable column** in `register/list/assets`, so an asset cannot be
-located or cross-referenced by its own address through query. Every Distordia asset therefore
-**duplicates its register address into a normal, queryable `address` field**, via a two-step write:
+**`self-addr` convention (REQUIRED — this is base-contract B5).** The auto-assigned register
+`address` is the primary key but is **not a filterable column** in `register/list/assets`, so an
+asset cannot be located or cross-referenced by its own address through query. Every Distordia asset
+therefore **duplicates its register address into a normal, queryable field named `self-addr`**, via
+a two-step write:
 
 1. `assets/create/asset format=JSON name=… json='[…]'` → Nexus returns the new register `address`.
-2. `assets/update/asset address=<returned> address="<returned>"` → stamp it into the `address` field.
+2. `assets/update/asset address=<returned> self-addr="<returned>"` → stamp that value into the
+   asset's `self-addr` field. (Here `address=<returned>` is the command's locator argument; the
+   `self-addr=…` part is the field being set.)
 
-`address` is thus `mutable: true` (written once, post-create). **Every upper-layer link** (`product`,
-`parent`, `component`, `supersedes`, `next`) stores the *target's* `address` value, resolved with
-`WHERE address = '<value>'`. *Caveat:* if a node rejects a user field literally named `address`
-(reserved-name collision), use `self-addr` consistently — same convention.
+`self-addr` is thus `mutable: true` (written once, post-create). **Every upper-layer link**
+(`product`, `parent`, `component`, `supersedes`, `next`) stores the *target's* `self-addr` value,
+resolved with `WHERE self-addr = '<value>'`. *Naming:* the field is deliberately **not** called
+`address`, to avoid colliding with the auto-generated system `address` attribute (which is
+non-queryable); `self-addr` is the canonical name throughout. Any distinct name works provided it is
+used consistently across all standards.
 
 ### 7.2 Proposed base-layer schema
 
@@ -307,7 +312,7 @@ relational to the layers above.
 [
   {"name":"distordia-type","type":"string","value":"product","mutable":false,"maxlength":16},
   {"name":"schema-ver","type":"string","value":"2.0.0","mutable":false,"maxlength":8},
-  {"name":"address","type":"string","value":"","mutable":true,"maxlength":56},
+  {"name":"self-addr","type":"string","value":"","mutable":true,"maxlength":56},
   {"name":"status","type":"string","value":"valid","mutable":true,"maxlength":8},
   {"name":"art-nr","type":"string","value":"","mutable":false,"maxlength":32},
   {"name":"mpn","type":"string","value":"","mutable":false,"maxlength":40},
@@ -333,7 +338,7 @@ relational to the layers above.
 ```
 
 This implements exactly the six base-layer fixes of §5 and nothing more:
-- **`address`** (B5) — queryable self-address; the linchpin of the layered model.
+- **`self-addr`** (B5) — queryable copy of the register address; the linchpin of the layered model.
 - **`mpn`** (B1), **`mat-type`** (B2), **`base-uom`** (B3) — intrinsic identity additions.
 - **`mfr`/`steward`** store **namespaces** (B4/B6); validated `gtin` + `art-nr` are the keys.
 - **`rev` + `supersedes` + `dq-score`** (B6) — append-only revision and stewardship signal.
@@ -347,7 +352,7 @@ This implements exactly the six base-layer fixes of §5 and nothing more:
 |---|---|
 | System/platform fields (`address`-locator, `owner`, `type`, `form`, `version`, `created`, `modified`) | ~180 reserved |
 | User fields — names + structural overhead (24 fields) | ~280 |
-| User fields — values at *typical* fill (gtin 13, mpn ~16, desc ~60, address 51, codes short) | ~320 |
+| User fields — values at *typical* fill (gtin 13, mpn ~16, desc ~60, self-addr 51, codes short) | ~320 |
 | **Typical total** | **~780 / 1024** ✅ |
 | User fields — values at *worst-case* maxlength | ~540 |
 | **Worst-case total** | **~1000** — fits, `desc` is the swing field |
@@ -360,13 +365,13 @@ Immutable string fields store their actual (short) length, so real records sit w
 ## 8. Companion-Standard Sketches (the layers above)
 
 Each upper layer is its own asset type/standard, owned by the authoring party, carrying its own
-self-`address`, and linking to the base via `product = <core address>` (BOM via `parent`). These are
+`self-addr`, and linking to the base via `product = <core self-addr>` (BOM via `parent`). These are
 **separate standards**, developed independently of the master-data standard — adding them never
 touches the base record.
 
 ```mermaid
 flowchart TB
-    CORE["product (base, L1)<br/>self-address = primary key"]
+    CORE["product (base, L1)<br/>self-addr = mirror of primary key"]
     PLAN["product-plan<br/>(buyer / plant)"]
     SRC["product-source<br/>(supplier / AVL)"]
     BOM["product-bom-line<br/>(chained via next)"]
@@ -376,14 +381,14 @@ flowchart TB
     CST["product-cost<br/>(valuation)"]
     INV["product-stock<br/>(inventory / warehouse)"]
 
-    PLAN -->|product = core.address| CORE
-    SRC  -->|product = core.address| CORE
-    BOM  -->|parent = core.address| CORE
-    CMP  -->|product = core.address| CORE
-    CLS  -->|product = core.address| CORE
-    PCK  -->|product = core.address| CORE
-    CST  -->|product = core.address| CORE
-    INV  -->|product = core.address| CORE
+    PLAN -->|product = core.self-addr| CORE
+    SRC  -->|product = core.self-addr| CORE
+    BOM  -->|parent = core.self-addr| CORE
+    CMP  -->|product = core.self-addr| CORE
+    CLS  -->|product = core.self-addr| CORE
+    PCK  -->|product = core.self-addr| CORE
+    CST  -->|product = core.self-addr| CORE
+    INV  -->|product = core.self-addr| CORE
 ```
 
 **`product-plan` (Planning layer — buyer/plant owned).** The asset that turns the catalogue into
@@ -391,8 +396,8 @@ something *plannable*.
 ```json
 [
   {"name":"distordia-type","value":"product-plan","mutable":false},
-  {"name":"address","value":"","mutable":true,"maxlength":56},
-  {"name":"product","value":"<core-address>","mutable":false,"maxlength":56},
+  {"name":"self-addr","value":"","mutable":true,"maxlength":56},
+  {"name":"product","value":"<core-self-addr>","mutable":false,"maxlength":56},
   {"name":"plant","value":"","mutable":false,"maxlength":16},
   {"name":"mrp-type","value":"PD","mutable":true,"maxlength":4},
   {"name":"lot-proc","value":"EX","mutable":true,"maxlength":4},
@@ -412,8 +417,8 @@ something *plannable*.
 ```json
 [
   {"name":"distordia-type","value":"product-source"},
-  {"name":"address","value":"","mutable":true,"maxlength":56},
-  {"name":"product","value":"<core-address>"},
+  {"name":"self-addr","value":"","mutable":true,"maxlength":56},
+  {"name":"product","value":"<core-self-addr>"},
   {"name":"supplier","value":"<namespace>"},
   {"name":"supplier-pn","value":"","maxlength":40},
   {"name":"moq","type":"uint32","value":0},
@@ -428,23 +433,23 @@ something *plannable*.
 ```
 
 **`product-bom-line` (BOM/engineering layer — one asset per component; solves "no arrays").** Lines
-chain via `next` like article chunks; each carries its self-`address`.
+chain via `next` like article chunks; each carries its `self-addr`.
 ```json
 [
   {"name":"distordia-type","value":"product-bom-line"},
-  {"name":"address","value":"","mutable":true,"maxlength":56},
-  {"name":"parent","value":"<parent-core-address>"},
-  {"name":"component","value":"<component-core-address>"},
+  {"name":"self-addr","value":"","mutable":true,"maxlength":56},
+  {"name":"parent","value":"<parent-self-addr>"},
+  {"name":"component","value":"<component-self-addr>"},
   {"name":"qty-milli","type":"uint64","value":0},
   {"name":"comp-uom","value":"EA"},
   {"name":"scrap-bps","type":"uint16","value":0},
   {"name":"alt-group","type":"uint8","value":0},
   {"name":"eff-from","type":"uint64","value":0},
   {"name":"eff-to","type":"uint64","value":0},
-  {"name":"next","value":"<address-of-next-bom-line>"}
+  {"name":"next","value":"<next-bom-line-self-addr>"}
 ]
 ```
-(`qty-milli` = qty ×1000; `scrap-bps` = basis points. Find a BOM: `WHERE parent = '<core-address>'`,
+(`qty-milli` = qty ×1000; `scrap-bps` = basis points. Find a BOM: `WHERE parent = '<core-self-addr>'`,
 then walk `next`.)
 
 **Other layers (same pattern, schemas analogous):**
@@ -492,7 +497,7 @@ then walk `next`.)
 | Level | Adds | Unlocks |
 |---|---|---|
 | **M0 (today, v1)** | flat catalogue record | universal product reference |
-| **M1 — solid base** | v2 core: `address`, `mpn`, `mat-type`, `base-uom`, `rev`, stewardship | a stable, queryable, trustworthy **anchor** |
+| **M1 — solid base** | v2 core: `self-addr`, `mpn`, `mat-type`, `base-uom`, `rev`, stewardship | a stable, queryable, trustworthy **anchor** |
 | **M2 — Planning layer** | `product-plan` | **first real MRP** (netting + time-phasing + lot-sizing) |
 | **M3 — Sourcing + Packaging** | `product-source`, `product-pack` | multi-source procurement, UOM/packaging |
 | **M4 — BOM layer** | `product-bom-line` chains | BOM explosion → manufacturing MRP |
@@ -510,7 +515,7 @@ manufacturer-authored product identity register. That minimalism is the feature 
 decentralized B2B network *share* it — every other concern stacks on top as a separate, independently
 owned register that references the base by address.
 
-So the right critique is narrow. The base needs **six small fixes** (§5): a queryable self-address,
+So the right critique is narrow. The base needs **six small fixes** (§5): a queryable `self-addr`,
 `mpn`, `mat-type`, `base-uom`, validated identifiers, and shared-register stewardship/versioning.
 With those, the base is production-ready *as a base*. Everything else MRP requires — BOM, sourcing,
 planning, costing, warehouse, compliance — is **not** master data and should never be pushed into it;
