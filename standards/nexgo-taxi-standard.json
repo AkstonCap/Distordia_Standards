@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/nexgo-taxi.v1.json",
   "title": "NexGo Taxi Standard",
   "description": "Schema for decentralized taxi assets on the Nexus blockchain, used by the NexGo P2P ride-hailing module.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [

@@ -258,6 +258,8 @@ Supports threading (replies), quotes, reposts, media attachments, hashtags, ment
 Products are registered as immutable, timestamped blockchain assets. Each product gets a unique on-chain address that serves as a universal reference across ERP and supply chain systems.
 
 > **In-depth review:** [Product Master Data as the Base Layer of a Decentralized MRP Stack](docs/product-masterdata-mrp-analysis.md) — frames this standard as the minimal, stable product-identity base layer, draws the line between base-layer data and the MRP application layers (BOM, sourcing, planning, warehouse…) that stack on top, and proposes the small set of base-layer improvements plus a layered companion-standard model.
+>
+> **Next-gen draft:** [`product-standard.v0.2.0.json`](standards/product-standard.v0.2.0.json) implements that base-layer redesign (adds `mpn`, `mat-type`, `base-uom`, `rev`, stewardship). The current `product-standard.json` is v0.1.0 and is kept unchanged for history.
 
 **Key fields:**
 
@@ -738,7 +740,8 @@ Distordia_Standards/
     namespace-standard.json              # Identity and trust (21 fields)
     content-standard.json                # Content provenance (14 fields)
     social-standard.json                 # Social media posts (20 fields)
-    product-standard.json                # Product masterdata (25 fields)
+    product-standard.json                # Product masterdata v0.1.0 (25 fields)
+    product-standard.v0.2.0.json         # Product masterdata v0.2.0 base-layer draft (24 fields)
     nft-standard.json                    # NFT marketplace (10 fields)
     player-standard.json                 # Fantasy football (31 fields)
     agent-standard.json                  # AI agent registry (25 fields)

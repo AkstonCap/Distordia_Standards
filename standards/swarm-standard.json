@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/swarm.v1.json",
   "title": "Distordia Swarm Coordination Standard",
   "description": "Schema for agent swarm registration and mission contracts on Nexus blockchain.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "definitions": {
     "SwarmRegistration": {
       "nexusFormat": "JSON",

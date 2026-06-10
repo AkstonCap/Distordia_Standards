@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/article.v1.json",
   "title": "Distordia Article Standard",
   "description": "Schema for long-form articles stored as linked-list asset chains on the Nexus blockchain. A root asset (distordia-article) holds metadata and the first text chunk, while continuation assets (distordia-article-chunk) carry subsequent text and a 'next' pointer, forming a singly-linked list.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "JSON",
   "maxSize": "1KB per asset (system fields use ~180 bytes, ~820 bytes available for data)",
   "assetTypes": [

@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/nexgo-ride.v1.json",
   "title": "NexGo Ride Request Standard",
   "description": "Schema for ride request assets stored as raw (state register) assets on the Nexus blockchain. Represents the contractual ride flow between passengers and drivers in the NexGo P2P ride-hailing module. Uses Nexus Invoices API for payment.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "status": "draft",
   "nexusFormat": "raw",
   "maxSize": "1KB",

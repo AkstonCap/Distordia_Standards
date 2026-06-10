@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/nft.v1.json",
   "title": "Distordia NFT Marketplace Standard",
   "description": "Schema for NFT assets to be tokenized and traded on the Distordia on-chain marketplace.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "basic",
   "maxSize": "1KB (system fields ~180 bytes, ~820 bytes available)",
   "nexusFields": [

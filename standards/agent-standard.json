@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/agent.v1.json",
   "title": "Distordia Agent Registration Standard",
   "description": "Schema for AI agent identity registration on the Nexus blockchain. Enables agent-to-agent trust verification and commerce.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [

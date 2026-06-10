@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/nexgo-rating.v1.json",
   "title": "NexGo Rating Standard",
   "description": "Schema for passenger-to-driver ratings stored as raw (state register) assets on the Nexus blockchain, used by the NexGo P2P ride-hailing module.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "raw",
   "maxSize": "1KB",
   "dataFormat": {

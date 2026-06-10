@@ -305,13 +305,17 @@ used consistently across all standards.
 
 ### 7.2 Proposed base-layer schema
 
+> Published as [`standards/product-standard.v0.2.0.json`](../standards/product-standard.v0.2.0.json)
+> (version `0.2.0`, draft). The original v0.1.0 record is retained unchanged as
+> [`standards/product-standard.json`](../standards/product-standard.json) for history.
+
 Additions to v1 are **bold**; the record stays a lean identity anchor and pushes everything
 relational to the layers above.
 
 ```json
 [
   {"name":"distordia-type","type":"string","value":"product","mutable":false,"maxlength":16},
-  {"name":"schema-ver","type":"string","value":"2.0.0","mutable":false,"maxlength":8},
+  {"name":"schema-ver","type":"string","value":"0.2.0","mutable":false,"maxlength":8},
   {"name":"self-addr","type":"string","value":"","mutable":true,"maxlength":56},
   {"name":"status","type":"string","value":"valid","mutable":true,"maxlength":8},
   {"name":"art-nr","type":"string","value":"","mutable":false,"maxlength":32},

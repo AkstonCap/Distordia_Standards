@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/player.v1.json",
   "title": "Distordia Fantasy Football Player Standard",
   "description": "Schema for fantasy football player NFT assets on the Nexus blockchain.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [
