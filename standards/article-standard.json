@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/article.v1.json",
   "title": "Distordia Article Standard",
   "description": "Schema for long-form articles stored as linked-list asset chains on the Nexus blockchain. A root asset (distordia-article) holds metadata and the first text chunk, while continuation assets (distordia-article-chunk) carry subsequent text and a 'next' pointer, forming a singly-linked list.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "JSON",
   "maxSize": "1KB per asset (system fields use ~180 bytes, ~820 bytes available for data)",
   "assetTypes": [
@@ -11,6 +11,7 @@
       "description": "Root article asset. Holds article metadata (title, tags, content warning) and the first text chunk. Points to the first continuation chunk via the 'next' field.",
       "nexusFields": [
         { "name": "distordia-type", "type": "string", "value": "distordia-article", "mutable": false, "maxlength": 24 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
         { "name": "distordia-status", "type": "string", "value": "official", "mutable": true, "maxlength": 16 },
         { "name": "title", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
         { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 384 },
@@ -24,6 +25,9 @@
       "fieldDefinitions": {
         "distordia-type": {
           "description": "Asset type identifier. Must be 'distordia-article'."
+        },
+        "self-addr": {
+          "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. Stamped in by a post-create update (mutable, written once, then immutable by convention)."
         },
         "distordia-status": {
           "description": "Article status.",
@@ -61,6 +65,7 @@
       "description": "Continuation chunk for long articles. Carries text and a 'next' pointer to the following chunk. The last chunk has 'next' set to empty string.",
       "nexusFields": [
         { "name": "distordia-type", "type": "string", "value": "distordia-article-chunk", "mutable": false, "maxlength": 32 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
         { "name": "distordia-status", "type": "string", "value": "official", "mutable": true, "maxlength": 16 },
         { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 768 },
         { "name": "next", "type": "string", "value": "", "mutable": false, "maxlength": 64 }
@@ -68,6 +73,9 @@
       "fieldDefinitions": {
         "distordia-type": {
           "description": "Asset type identifier. Must be 'distordia-article-chunk'."
+        },
+        "self-addr": {
+          "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. Stamped in by a post-create update (mutable, written once, then immutable by convention)."
         },
         "distordia-status": {
           "description": "Chunk status.",
@@ -109,6 +117,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "distordia-article",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
       "distordia-status": "official",
       "title": "Introduction to Decentralized Identity",
       "text": "Decentralized identity puts users in control of their digital presence. Rather than relying on centralized platforms...",
@@ -122,6 +131,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "distordia-article",
+      "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
       "distordia-status": "official",
       "title": "The Future of Agent-to-Agent Commerce",
       "text": "As AI agents become more prevalent in business operations, the need for trustworthy agent-to-agent commerce grows...",
@@ -135,6 +145,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "distordia-type": "distordia-article-chunk",
+      "self-addr": "a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7",
       "distordia-status": "official",
       "text": "...continued text from the article. Verifiable agent identities enable secure multi-party transactions without intermediaries...",
       "next": ""

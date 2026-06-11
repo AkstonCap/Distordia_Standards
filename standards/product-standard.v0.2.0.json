@@ -1,0 +1,177 @@
+{
+  "$id": "https://distordia.com/standards/product.v0.2.0.json",
+  "title": "Distordia Product Masterdata Standard (v0.2.0 base-layer draft)",
+  "description": "Successor draft to product.v0.1.0. Reframes the product asset as a deliberately minimal, stable BASE IDENTITY LAYER for a decentralized B2B MRP stack. Relational/contextual MRP data (BOM, planning, sourcing, costing, inventory, compliance, classification, packaging/UOM) is NOT held here; it lives in separate companion standards that reference this record via 'product = <core self-addr>'. See docs/product-masterdata-mrp-analysis.md for the full layered model.",
+  "version": "0.2.0",
+  "status": "draft",
+  "supersedesStandard": "product.v0.1.0.json (retained for history as standards/product-standard.json)",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data; typical record ~780 bytes)",
+  "nexusFields": [
+    { "name": "distordia-type", "type": "string", "value": "product", "mutable": false, "maxlength": 16 },
+    { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+    { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+    { "name": "status", "type": "string", "value": "valid", "mutable": true, "maxlength": 8 },
+    { "name": "art-nr", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+    { "name": "mpn", "type": "string", "value": "", "mutable": false, "maxlength": 40 },
+    { "name": "gtin", "type": "string", "value": "", "mutable": false, "maxlength": 14 },
+    { "name": "mat-type", "type": "string", "value": "finished", "mutable": false, "maxlength": 12 },
+    { "name": "desc", "type": "string", "value": "", "mutable": true, "maxlength": 128 },
+    { "name": "mfr", "type": "string", "value": "", "mutable": false, "maxlength": 40 },
+    { "name": "brand", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+    { "name": "base-uom", "type": "string", "value": "EA", "mutable": false, "maxlength": 4 },
+    { "name": "gpc", "type": "string", "value": "", "mutable": false, "maxlength": 8 },
+    { "name": "hs", "type": "string", "value": "", "mutable": false, "maxlength": 10 },
+    { "name": "origin", "type": "string", "value": "", "mutable": false, "maxlength": 2 },
+    { "name": "weight-g", "type": "uint32", "value": 0, "mutable": false },
+    { "name": "length-mm", "type": "uint32", "value": 0, "mutable": false },
+    { "name": "width-mm", "type": "uint32", "value": 0, "mutable": false },
+    { "name": "height-mm", "type": "uint32", "value": 0, "mutable": false },
+    { "name": "lifecycle", "type": "string", "value": "active", "mutable": true, "maxlength": 8 },
+    { "name": "rev", "type": "string", "value": "A", "mutable": false, "maxlength": 8 },
+    { "name": "steward", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+    { "name": "dq-score", "type": "uint16", "value": 0, "mutable": true },
+    { "name": "supersedes", "type": "string", "value": "", "mutable": false, "maxlength": 56 }
+  ],
+  "fieldDefinitions": {
+    "distordia-type": {
+      "description": "Asset type identifier. Must be 'product'."
+    },
+    "schema-ver": {
+      "description": "Semantic version of this product record's schema. '0.2.0' for this base-layer draft. Enables forward-compatible, additive field evolution."
+    },
+    "self-addr": {
+      "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the record be located and linked by companion-layer assets via 'WHERE self-addr = <value>'. Stamped in by a post-create update (mutable, written once, then immutable by convention)."
+    },
+    "status": {
+      "description": "Record lifecycle/validity status.",
+      "enum": ["valid", "disc", "recall", "pend", "draft"]
+    },
+    "art-nr": {
+      "description": "Internal article/SKU number. Unique within the owning namespace. A primary identity key."
+    },
+    "mpn": {
+      "description": "Manufacturer Part Number. The real identity key in electronics, automotive, and industrial MRO (many such parts have no GTIN). Intrinsic to the product."
+    },
+    "gtin": {
+      "description": "Global Trade Item Number (EAN/UPC). 8-14 digits, check-digit validated."
+    },
+    "mat-type": {
+      "description": "Material type. Intrinsic, and the switch that tells companion layers which apply (a service has no BOM or weight).",
+      "enum": ["raw", "semi", "finished", "packaging", "mro", "service"]
+    },
+    "desc": {
+      "description": "Short human-readable description. Long/marketing descriptions and localized variants belong to the classification/media companion layer."
+    },
+    "mfr": {
+      "description": "Manufacturer NAMESPACE (human-readable and attestable via the namespace standard), not a genesis hash. The cryptographic owner is captured automatically in the system 'owner' field."
+    },
+    "brand": {
+      "description": "Brand name if different from the manufacturer."
+    },
+    "base-uom": {
+      "description": "Base unit of measure the identity is denominated in. Alternative UOMs, conversion factors, and packaging levels live in the packaging companion layer (product-pack).",
+      "enum": ["EA", "KG", "G", "L", "ML", "M", "MM", "M2", "M3", "HR", "SET"]
+    },
+    "gpc": {
+      "description": "GS1 Global Product Classification brick code (8 digits). Deeper classification (UNSPSC/eCl@ss/ETIM) lives in the classification companion layer."
+    },
+    "hs": {
+      "description": "Harmonized System customs code."
+    },
+    "origin": {
+      "description": "Country of origin. ISO 3166-1 alpha-2 code."
+    },
+    "weight-g": {
+      "description": "Net weight in grams (uint32, integer to avoid floats; divide by 1000 for kg)."
+    },
+    "length-mm": {
+      "description": "Length in millimeters."
+    },
+    "width-mm": {
+      "description": "Width in millimeters."
+    },
+    "height-mm": {
+      "description": "Height in millimeters."
+    },
+    "lifecycle": {
+      "description": "Product lifecycle/availability stage (distinct from record 'status').",
+      "enum": ["active", "prelim", "nrnd", "eol", "obsolete"]
+    },
+    "rev": {
+      "description": "Engineering/drawing revision of the product. Append-only: a new revision is published as a NEW asset whose 'supersedes' points to the prior record's self-addr."
+    },
+    "steward": {
+      "description": "Data-steward NAMESPACE authoritative for this record's quality. Tier/reputation derive from the namespace standard. For a shared 'common' register this is typically the manufacturer/brand owner (L2+)."
+    },
+    "dq-score": {
+      "description": "Data-quality score (0-1000). Computed from completeness + validity (GTIN check digit, ISO code membership, HS format) + steward tier, mirroring ISO 8000-61 dimensions."
+    },
+    "supersedes": {
+      "description": "self-addr of the prior product record this one supersedes (append-only revision chain). Empty for the first revision."
+    }
+  },
+  "required": ["distordia-type", "art-nr", "mat-type", "mfr", "base-uom"],
+  "examples": [
+    {
+      "_comment": "Example asset as returned by Nexus API (after the self-addr stamp step). 'address' (system) and 'self-addr' (user field) mirror each other.",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "version": 2,
+      "created": 1755775754,
+      "modified": 1755779999,
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "product",
+      "schema-ver": "0.2.0",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "status": "valid",
+      "art-nr": "WIDGET-2000-BLK",
+      "mpn": "ACM-WID2000-BLK",
+      "gtin": "5901234123457",
+      "mat-type": "finished",
+      "desc": "Industrial Widget 2000 - Black Anodized Aluminium",
+      "mfr": "acme-industries",
+      "brand": "Acme Pro",
+      "base-uom": "EA",
+      "gpc": "10000001",
+      "hs": "848180",
+      "origin": "DE",
+      "weight-g": 250,
+      "length-mm": 105,
+      "width-mm": 52,
+      "height-mm": 31,
+      "lifecycle": "active",
+      "rev": "B",
+      "steward": "acme-industries",
+      "dq-score": 920,
+      "supersedes": ""
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON name=product-{art-nr} json='[...]'",
+    "stampSelfAddr": "assets/update/asset address=<returned-address> self-addr=\"<returned-address>\"",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilter": "distordia-type = 'product'"
+  },
+  "companionLayers": {
+    "_comment": "MRP application data is NOT part of this base standard. Each layer below is its own (future) companion standard, owned by the authoring party, linking up to this record via 'product = <core self-addr>' (BOM via 'parent'). See docs/product-masterdata-mrp-analysis.md.",
+    "product-plan": "Planning overlay (buyer/plant): MRP type, lead times, lot sizing, safety stock.",
+    "product-source": "Sourcing/AVL (per supplier): supplier namespace, supplier PN, MOQ, price, lead time, incoterm.",
+    "product-bom-line": "Bill of materials (one asset per component; chained via 'next').",
+    "product-cost": "Valuation: standard/moving price, currency, price unit.",
+    "product-stock": "Inventory/warehouse: plant, location, batch, serial, on-hand.",
+    "product-class": "Classification & attributes: UNSPSC/eCl@ss/ETIM + characteristic key-values.",
+    "product-comp": "Compliance: UN/hazard class, RoHS/REACH, SDS, UDI/serialization, certificate hashes.",
+    "product-pack": "Packaging/UOM hierarchy: each/inner/case/pallet GTINs, conversion factors, catch-weight."
+  },
+  "notes": [
+    "Base identity layer only. Keeping this record minimal is intentional: it is the stable, shared anchor every higher MRP layer references.",
+    "self-addr is stamped via a two-step create-then-update write; see README 'Asset self-address (self-addr)'.",
+    "mfr and steward are namespaces (human-readable, attestable), not genesis hashes; the system 'owner' field already records the creating sigchain's genesis.",
+    "weight-g in grams; dimensions in millimeters (integers, no floats).",
+    "Successor draft to product.v0.1.0 (standards/product-standard.json), which is retained unchanged for history.",
+    "Revisions are append-only: publish a new asset whose 'supersedes' = the prior record's self-addr, rather than mutating immutable identity fields."
+  ]
+}

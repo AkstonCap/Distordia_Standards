@@ -2,7 +2,7 @@
   "$id": "https://distordia.com/standards/nexgo-ride.v1.json",
   "title": "NexGo Ride Request Standard",
   "description": "Schema for ride request assets stored as raw (state register) assets on the Nexus blockchain. Represents the contractual ride flow between passengers and drivers in the NexGo P2P ride-hailing module. Uses Nexus Invoices API for payment.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "status": "draft",
   "nexusFormat": "raw",
   "maxSize": "1KB",
@@ -13,6 +13,10 @@
         "type": "string",
         "value": "nexgo-ride",
         "description": "Asset type identifier. Must be 'nexgo-ride'."
+      },
+      "self-addr": {
+        "type": "string",
+        "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. For raw assets it is written into the data blob when the payload is first created (written once, then immutable by convention)."
       },
       "pickup-lat": {
         "type": "string",
@@ -102,14 +106,14 @@
       "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
       "type": "OBJECT",
       "form": "RAW",
-      "data": "{\"distordia-type\":\"nexgo-ride\",\"pickup-lat\":\"40.7128\",\"pickup-lng\":\"-74.0060\",\"dest-lat\":\"40.7589\",\"dest-lng\":\"-73.9851\",\"passengers\":2,\"status\":\"requesting\",\"driver-genesis\":\"\"}"
+      "data": "{\"distordia-type\":\"nexgo-ride\",\"self-addr\":\"87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx\",\"pickup-lat\":\"40.7128\",\"pickup-lng\":\"-74.0060\",\"dest-lat\":\"40.7589\",\"dest-lng\":\"-73.9851\",\"passengers\":2,\"status\":\"requesting\",\"driver-genesis\":\"\"}"
     },
     {
       "_comment": "Accepted ride with driver assigned",
       "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
       "type": "OBJECT",
       "form": "RAW",
-      "data": "{\"distordia-type\":\"nexgo-ride\",\"pickup-lat\":\"40.7128\",\"pickup-lng\":\"-74.0060\",\"dest-lat\":\"40.7589\",\"dest-lng\":\"-73.9851\",\"passengers\":2,\"status\":\"accepted\",\"driver-genesis\":\"b2d8c799fef322b3d25ec5b85999f1de0e5788da2c2eb32e7cdd64cefc0e1f71\"}"
+      "data": "{\"distordia-type\":\"nexgo-ride\",\"self-addr\":\"92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny\",\"pickup-lat\":\"40.7128\",\"pickup-lng\":\"-74.0060\",\"dest-lat\":\"40.7589\",\"dest-lng\":\"-73.9851\",\"passengers\":2,\"status\":\"accepted\",\"driver-genesis\":\"b2d8c799fef322b3d25ec5b85999f1de0e5788da2c2eb32e7cdd64cefc0e1f71\"}"
     }
   ],
   "relatedEndpoints": [

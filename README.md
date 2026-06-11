@@ -49,20 +49,20 @@ All web3 applications built by Distordia (and hopefully everyone else) follow th
 
 | # | Standard | File | Type Identifier | Fields | Purpose |
 |---|----------|------|-----------------|--------|---------|
-| 1 | [Namespace Attestation](#1-namespace-attestation) | [`namespace-standard.json`](standards/namespace-standard.json) | `namespace` | 20 | Identity, trust, and delegation |
-| 2 | [Content Verification](#2-content-verification) | [`content-standard.json`](standards/content-standard.json) | `content` | 13 | Content provenance and anti-misinformation |
-| 3 | [Social Posts](#3-social-posts) | [`social-standard.json`](standards/social-standard.json) | `distordia-post` | 19 | Decentralized social media |
-| 4 | [Product Masterdata](#4-product-masterdata) | [`product-standard.json`](standards/product-standard.json) | `product` | 24 | Supply chain product registry (GS1/ISO) |
-| 5 | [NFT Marketplace](#5-nft-marketplace) | [`nft-standard.json`](standards/nft-standard.json) | `nft` | 9 | Tokenized art and collectibles |
-| 6 | [Fantasy Football Players](#6-fantasy-football-players) | [`player-standard.json`](standards/player-standard.json) | `distordia.player.v1` | 30 | Player NFT cards with live stats |
-| 7 | [Agent Registration](#7-agent-registration) | [`agent-standard.json`](standards/agent-standard.json) | `agent` | 24 | AI agent identity and A2A trust |
-| 8 | [Swarm Coordination](#8-swarm-coordination) | [`swarm-standard.json`](standards/swarm-standard.json) | `swarm` / `swarm-mission` | 17 / 25 | Multi-agent orchestration and contracts |
-| 9 | [Articles](#9-articles) | [`article-standard.json`](standards/article-standard.json) | `distordia-article` / `distordia-article-chunk` | 10 / 4 | Long-form content via linked-list asset chains |
-| 10 | [NexGo Taxi](#10-nexgo-taxi) | [`nexgo-taxi-standard.json`](standards/nexgo-taxi-standard.json) | `nexgo-taxi` | 8 | P2P ride-hailing vehicle registry |
-| 11 | [NexGo Rating](#11-nexgo-rating) | [`nexgo-rating-standard.json`](standards/nexgo-rating-standard.json) | `nexgo-rating` | 2 (raw) | Passenger-to-driver rating system |
-| 12 | [NexGo Ride](#12-nexgo-ride) | [`nexgo-ride-standard.json`](standards/nexgo-ride-standard.json) | `nexgo-ride` | 8 (raw) | Contractual ride requests with invoice payment |
+| 1 | [Namespace Attestation](#1-namespace-attestation) | [`namespace-standard.json`](standards/namespace-standard.json) | `namespace` | 21 | Identity, trust, and delegation |
+| 2 | [Content Verification](#2-content-verification) | [`content-standard.json`](standards/content-standard.json) | `content` | 14 | Content provenance and anti-misinformation |
+| 3 | [Social Posts](#3-social-posts) | [`social-standard.json`](standards/social-standard.json) | `distordia-post` | 20 | Decentralized social media |
+| 4 | [Product Masterdata](#4-product-masterdata) | [`product-standard.json`](standards/product-standard.json) | `product` | 25 | Supply chain product registry (GS1/ISO) |
+| 5 | [NFT Marketplace](#5-nft-marketplace) | [`nft-standard.json`](standards/nft-standard.json) | `nft` | 10 | Tokenized art and collectibles |
+| 6 | [Fantasy Football Players](#6-fantasy-football-players) | [`player-standard.json`](standards/player-standard.json) | `distordia.player.v1` | 31 | Player NFT cards with live stats |
+| 7 | [Agent Registration](#7-agent-registration) | [`agent-standard.json`](standards/agent-standard.json) | `agent` | 25 | AI agent identity and A2A trust |
+| 8 | [Swarm Coordination](#8-swarm-coordination) | [`swarm-standard.json`](standards/swarm-standard.json) | `swarm` / `swarm-mission` | 18 / 26 | Multi-agent orchestration and contracts |
+| 9 | [Articles](#9-articles) | [`article-standard.json`](standards/article-standard.json) | `distordia-article` / `distordia-article-chunk` | 11 / 5 | Long-form content via linked-list asset chains |
+| 10 | [NexGo Taxi](#10-nexgo-taxi) | [`nexgo-taxi-standard.json`](standards/nexgo-taxi-standard.json) | `nexgo-taxi` | 9 | P2P ride-hailing vehicle registry |
+| 11 | [NexGo Rating](#11-nexgo-rating) | [`nexgo-rating-standard.json`](standards/nexgo-rating-standard.json) | `nexgo-rating` | 3 (raw) | Passenger-to-driver rating system |
+| 12 | [NexGo Ride](#12-nexgo-ride) | [`nexgo-ride-standard.json`](standards/nexgo-ride-standard.json) | `nexgo-ride` | 9 (raw) | Contractual ride requests with invoice payment |
 
-**Total: 12 standards, 15 asset types, ~220 field definitions**
+**Total: 12 standards, 15 asset types, ~235 field definitions** (every asset type carries a `self-addr` field — see [Blockchain Constraints](#blockchain-constraints))
 
 ---
 
@@ -79,16 +79,43 @@ All Distordia assets live on the Nexus blockchain under these constraints:
 | Arrays | Not supported (use comma/pipe-separated strings) |
 | Booleans | `uint8` with values `0` or `1` |
 | Timestamps | `uint64` Unix timestamps |
+| Addressing | Register `address` is auto-assigned but **not queryable**; assets mirror it into a `self-addr` field |
 | API | POST requests to `https://api.distordia.com` |
 
 **On-chain field format:**
 ```json
 [
   {"name":"distordia-type","type":"string","value":"product","mutable":false,"maxlength":16},
+  {"name":"self-addr","type":"string","value":"","mutable":true,"maxlength":56},
   {"name":"weight-kg","type":"uint32","value":250,"mutable":false},
   {"name":"status","type":"string","value":"active","mutable":true,"maxlength":12}
 ]
 ```
+
+### Asset self-address (`self-addr`)
+
+When an asset is created, Nexus auto-assigns a set of system attributes — `address` (the unique
+register locator / primary key), `owner` (the creator's genesis hash), `type`, `form`, `version`,
+`created`, and `modified`. These are returned by the API but are **not** part of the user-defined
+field list, and the register `address` is **not a filterable column** in `register/list/assets` —
+so an asset cannot be located or cross-referenced by its own address through a query.
+
+Every Distordia asset therefore **duplicates its register address into a normal, queryable field
+named `self-addr`**. Because the address is unknown until the create transaction confirms, this is a
+deliberate two-step write:
+
+```bash
+# 1. Create — Nexus returns the new register address
+assets/create/asset format=JSON name=product-WIDGET-2000 json='[...]'
+
+# 2. Stamp the returned address into the asset's own self-addr field
+assets/update/asset address=<returned-address> self-addr="<returned-address>"
+```
+
+`self-addr` is `mutable: true` (written exactly once, post-create, then frozen by convention). All
+inter-asset links (e.g. `reply-to`, `quote`, `supersedes`, `replaced-by`) store the *target's*
+`self-addr` value, so consumers resolve a link with `WHERE self-addr = '<value>'`. The field is
+deliberately **not** named `address`, to avoid colliding with the auto-assigned system attribute.
 
 ---
 
@@ -229,6 +256,10 @@ Supports threading (replies), quotes, reposts, media attachments, hashtags, ment
 > **Purpose:** Global product registry based on GS1, UN/CEFACT, and ISO standards for supply chain traceability.
 
 Products are registered as immutable, timestamped blockchain assets. Each product gets a unique on-chain address that serves as a universal reference across ERP and supply chain systems.
+
+> **In-depth review:** [Product Master Data as the Base Layer of a Decentralized MRP Stack](docs/product-masterdata-mrp-analysis.md) — frames this standard as the minimal, stable product-identity base layer, draws the line between base-layer data and the MRP application layers (BOM, sourcing, planning, warehouse…) that stack on top, and proposes the small set of base-layer improvements plus a layered companion-standard model.
+>
+> **Next-gen draft:** [`product-standard.v0.2.0.json`](standards/product-standard.v0.2.0.json) implements that base-layer redesign (adds `mpn`, `mat-type`, `base-uom`, `rev`, stewardship). The current `product-standard.json` is v0.1.0 and is kept unchanged for history.
 
 **Key fields:**
 
@@ -648,13 +679,16 @@ The ride standard defines the full decentralized ride flow: passenger creates a 
 
 ## Nexus API Quick Reference
 
-**Create an asset:**
+**Create an asset** (then stamp its `self-addr`, see [Asset self-address](#asset-self-address-self-addr)):
 ```bash
 assets/create/asset format=JSON name=product-WIDGET-2000 json='[
   {"name":"distordia-type","type":"string","value":"product","mutable":false,"maxlength":16},
+  {"name":"self-addr","type":"string","value":"","mutable":true,"maxlength":56},
   {"name":"art-nr","type":"string","value":"WIDGET-2000","mutable":false,"maxlength":32},
   {"name":"desc","type":"string","value":"Industrial Widget","mutable":true,"maxlength":256}
 ]'
+# Returns the new register address; stamp it back into self-addr:
+assets/update/asset address=<returned-address> self-addr="<returned-address>"
 ```
 
 **Query assets:**
@@ -703,18 +737,19 @@ Distordia_Standards/
   README.md                              # This file
   LICENSE                                # MIT License
   standards/
-    namespace-standard.json              # Identity and trust (20 fields)
-    content-standard.json                # Content provenance (13 fields)
-    social-standard.json                 # Social media posts (19 fields)
-    product-standard.json                # Product masterdata (24 fields)
-    nft-standard.json                    # NFT marketplace (9 fields)
-    player-standard.json                 # Fantasy football (30 fields)
-    agent-standard.json                  # AI agent registry (24 fields)
-    swarm-standard.json                  # Swarm + missions (17 + 25 fields)
-    article-standard.json               # Long-form articles (10 + 4 fields)
-    nexgo-taxi-standard.json            # NexGo taxi registry (8 fields)
-    nexgo-rating-standard.json          # NexGo passenger ratings (raw, 2 fields)
-    nexgo-ride-standard.json            # NexGo ride requests (raw, 8 fields)
+    namespace-standard.json              # Identity and trust (21 fields)
+    content-standard.json                # Content provenance (14 fields)
+    social-standard.json                 # Social media posts (20 fields)
+    product-standard.json                # Product masterdata v0.1.0 (25 fields)
+    product-standard.v0.2.0.json         # Product masterdata v0.2.0 base-layer draft (24 fields)
+    nft-standard.json                    # NFT marketplace (10 fields)
+    player-standard.json                 # Fantasy football (31 fields)
+    agent-standard.json                  # AI agent registry (25 fields)
+    swarm-standard.json                  # Swarm + missions (18 + 26 fields)
+    article-standard.json               # Long-form articles (11 + 5 fields)
+    nexgo-taxi-standard.json            # NexGo taxi registry (9 fields)
+    nexgo-rating-standard.json          # NexGo passenger ratings (raw, 3 fields)
+    nexgo-ride-standard.json            # NexGo ride requests (raw, 9 fields)
 ```
 
 ---

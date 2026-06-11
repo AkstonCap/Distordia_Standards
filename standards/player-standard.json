@@ -2,11 +2,12 @@
   "$id": "https://distordia.com/standards/player.v1.json",
   "title": "Distordia Fantasy Football Player Standard",
   "description": "Schema for fantasy football player NFT assets on the Nexus blockchain.",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [
     { "name": "standard", "type": "string", "value": "distordia.player.v1", "mutable": false, "maxlength": 24 },
+    { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
     { "name": "player-id", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
     { "name": "player-name", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
     { "name": "ext-id", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
@@ -39,6 +40,9 @@
   ],
   "fieldDefinitions": {
     "standard": { "description": "Standard version identifier." },
+    "self-addr": {
+      "description": "Queryable self-reference: a copy of this asset's own Nexus register address. The auto-assigned 'address' attribute is not filterable in register/list, so 'self-addr' lets the asset be located and linked via 'WHERE self-addr = <value>'. Stamped in by a post-create update (mutable, written once, then immutable by convention)."
+    },
     "player-id": { "description": "Unique player identifier (lowercase).", "pattern": "^[a-z0-9\\-]+$" },
     "player-name": { "description": "Full display name of the player." },
     "ext-id": { "description": "External ID from data provider." },
@@ -81,6 +85,7 @@
       "type": "OBJECT",
       "form": "ASSET",
       "standard": "distordia.player.v1",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
       "player-id": "haaland",
       "player-name": "Erling Haaland",
       "ext-id": "1100",
