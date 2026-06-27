@@ -384,6 +384,11 @@ standards at once.
 | P2 | Define the **indexer layer** and standard query contracts | all |
 | P2 | **Privacy model** (off-chain PII, ZK commitments); fix `standard` vs `distordia-type` | namespace, nexgo, player |
 
+### Deep-dive design notes
+Two clusters have dedicated redesign notes (with mermaid diagrams for current state, proposed model,
+and future ecosystem fit): [Content & Publishing](content-cluster-design-note.md) (Content · Articles
+· Social) and [NexGo Mobility](nexgo-cluster-design-note.md) (Taxi · Ride · Rating).
+
 ### What's already strong (don't over-engineer)
 - **Namespace** staked-tier trust model, **Agent** safety primitives (kill-switch, tx caps), **Swarm**
   mission-contract concept, **Player** completeness, and **NexGo Ride** atomic invoice settlement are

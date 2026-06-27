@@ -47,7 +47,7 @@ All web3 applications built by Distordia (and hopefully everyone else) follow th
 
 ## Standards at a Glance
 
-> **Market evaluation:** [Distordia Standards vs. Market Needs](docs/standards-market-evaluation.md) — a production-readiness and competitive-fit review of all non-product standards (vs. DID/VC, C2PA, ActivityPub/Nostr/Farcaster, Metaplex/EIP-2981, A2A/ERC-8004, Olas, and more). The product standard has its own [deep-dive](docs/product-masterdata-mrp-analysis.md).
+> **Market evaluation:** [Distordia Standards vs. Market Needs](docs/standards-market-evaluation.md) — a production-readiness and competitive-fit review of all non-product standards (vs. DID/VC, C2PA, ActivityPub/Nostr/Farcaster, Metaplex/EIP-2981, A2A/ERC-8004, Olas, and more). The product standard has its own [deep-dive](docs/product-masterdata-mrp-analysis.md). Cluster design notes: [Content & Publishing](docs/content-cluster-design-note.md) (Content · Articles · Social) and [NexGo Mobility](docs/nexgo-cluster-design-note.md) (Taxi · Ride · Rating).
 
 | # | Standard | File | Type Identifier | Fields | Purpose |
 |---|----------|------|-----------------|--------|---------|
