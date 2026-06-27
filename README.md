@@ -742,8 +742,10 @@ Distordia_Standards/
   LICENSE                                # MIT License
   standards/
     namespace-standard.json              # Identity and trust (21 fields)
-    content-standard.json                # Content provenance (14 fields)
-    social-standard.json                 # Social media posts (20 fields)
+    content-standard.json                # Content provenance v0.1.0 (14 fields)
+    content-standard.v0.2.0.json         # Content v0.2.0 unified anchor draft (off-chain body + C2PA)
+    social-standard.json                 # Social media posts v0.1.0 (20 fields)
+    social-standard.v0.2.0.json          # Social v0.2.0 draft (+ follow graph + reactions)
     product-standard.json                # Product masterdata v0.1.0 (25 fields)
     product-standard.v0.2.0.json         # Product masterdata v0.2.0 base-layer draft (24 fields)
     product-standard.v0.2.0.solana.json  # Product masterdata v0.2.0 on Solana (same schema, Borsh PDA)
@@ -751,11 +753,21 @@ Distordia_Standards/
     player-standard.json                 # Fantasy football (31 fields)
     agent-standard.json                  # AI agent registry (25 fields)
     swarm-standard.json                  # Swarm + missions (18 + 26 fields)
-    article-standard.json               # Long-form articles (11 + 5 fields)
-    nexgo-taxi-standard.json            # NexGo taxi registry (9 fields)
-    nexgo-rating-standard.json          # NexGo passenger ratings (raw, 3 fields)
-    nexgo-ride-standard.json            # NexGo ride requests (raw, 9 fields)
+    article-standard.json               # Long-form articles v0.1.0 (11 + 5 fields)
+    article-standard.v0.2.0.json        # Articles v0.2.0 draft (off-chain body + hardened chunk fallback)
+    nexgo-taxi-standard.json            # NexGo taxi registry v0.1.0 (9 fields)
+    nexgo-taxi-standard.v0.2.0.json     # NexGo taxi v0.2.0 draft (GPS off-chain, compliance creds)
+    nexgo-rating-standard.json          # NexGo passenger ratings v0.1.0 (raw, 3 fields)
+    nexgo-rating-standard.v0.2.0.json   # NexGo rating v0.2.0 draft (verified-ride gated, typed)
+    nexgo-ride-standard.json            # NexGo ride requests v0.1.0 (raw, 9 fields)
+    nexgo-ride-standard.v0.2.0.json     # NexGo ride v0.2.0 draft (request/offer/agreement, driver-signed)
 ```
+
+> **v0.2.0 drafts** implement the redesigns from the cluster design notes
+> ([content](docs/content-cluster-design-note.md), [NexGo](docs/nexgo-cluster-design-note.md)) and
+> the [product MRP analysis](docs/product-masterdata-mrp-analysis.md). Each keeps its v0.1.0 file
+> unchanged for history. The remaining standards (namespace, agent, swarm, nft, player) have
+> [market-evaluation](docs/standards-market-evaluation.md) recommendations but no v0.2.0 draft yet.
 
 ---
 

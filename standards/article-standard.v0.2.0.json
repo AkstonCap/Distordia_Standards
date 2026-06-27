@@ -1,0 +1,134 @@
+{
+  "$id": "https://distordia.com/standards/article.v0.2.0.json",
+  "title": "Distordia Article Standard (v0.2.0 draft)",
+  "description": "Successor draft to article.v0.1.0. PRIMARY model: an article is a content anchor (content.v0.2.0, kind=article) whose body is stored off-chain on a decentralized store (Arweave/IPFS) and integrity-checked by the on-chain 'hash'. This removes the v0.1.0 chunk-chain's fragility (orphan chunks, partial-delete holes, no integrity, 5000-char cap). The hardened on-chain chunk chain below is retained ONLY as an optional fully-on-chain fallback for censorship-resistance maximalists. See docs/content-cluster-design-note.md.",
+  "version": "0.2.0",
+  "status": "draft",
+  "supersedesStandard": "article.v0.1.0.json (retained as standards/article-standard.json)",
+  "designNote": "docs/content-cluster-design-note.md",
+  "primaryModel": {
+    "description": "Recommended: publish the body to Arweave/IPFS and register ONE content.v0.2.0 asset with kind=article, cid, hash, author(namespace), title. Unbounded length, integrity, low cost, and verifiable like any other content.",
+    "standard": "content.v0.2.0.json"
+  },
+  "nexusFormat": "JSON",
+  "maxSize": "1KB per asset (system fields ~180 bytes, ~820 bytes for data).",
+  "fallbackModel": "Fully-on-chain linked chain, HARDENED vs v0.1.0: every asset carries 'article-id' and the chunks carry a 'root' back-pointer and 'seq' order, and the root carries 'article-hash' over the assembled body, so the chain is attributable and integrity-checkable. Publish is still non-atomic across assets -- clients MUST verify the full chain (contiguous seq, matching article-id, article-hash) before display.",
+  "assetTypes": [
+    {
+      "type": "distordia-article",
+      "description": "Root article asset (on-chain fallback). Holds metadata, the first text chunk, and an integrity hash over the full assembled body.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-article", "mutable": false, "maxlength": 24 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "article-id", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "status", "type": "string", "value": "official", "mutable": true, "maxlength": 10 },
+        { "name": "title", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+        { "name": "author", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 320 },
+        { "name": "article-hash", "type": "string", "value": "", "mutable": false, "maxlength": 72 },
+        { "name": "tags", "type": "string", "value": "", "mutable": false, "maxlength": 96 },
+        { "name": "lang", "type": "string", "value": "en", "mutable": false, "maxlength": 2 },
+        { "name": "cw", "type": "string", "value": "", "mutable": false, "maxlength": 48 },
+        { "name": "reply-to", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "quote", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "next", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "supersedes", "type": "string", "value": "", "mutable": false, "maxlength": 56 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-article'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address." },
+        "article-id": { "description": "Stable article identifier. Every chunk references it, so any chunk is attributable to its article (fixes the v0.1.0 orphan/unattributable problem)." },
+        "status": { "description": "Article status.", "enum": ["official", "deleted", "hidden"] },
+        "title": { "description": "Article title." },
+        "author": { "description": "Author NAMESPACE." },
+        "text": { "description": "First text chunk of the body (max 320 chars given added metadata)." },
+        "article-hash": { "description": "SHA-256 over the full assembled body (all chunks concatenated). Lets a reader detect a broken/tampered/partial chain (the v0.1.0 integrity gap)." },
+        "tags": { "description": "Comma-separated hashtags." },
+        "lang": { "description": "ISO 639-1 language code." },
+        "cw": { "description": "Content warning." },
+        "reply-to": { "description": "self-addr of post/article being replied to." },
+        "quote": { "description": "self-addr of post/article being quoted." },
+        "next": { "description": "self-addr of the first continuation chunk (empty if the article fits the root)." },
+        "supersedes": { "description": "self-addr of the prior article revision." }
+      },
+      "required": ["distordia-type", "article-id", "title", "author", "text", "article-hash"]
+    },
+    {
+      "type": "distordia-article-chunk",
+      "description": "Continuation chunk (on-chain fallback). Now attributable (article-id + root back-pointer) and ordered (seq).",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-article-chunk", "mutable": false, "maxlength": 32 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "article-id", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "root", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "seq", "type": "uint16", "value": 0, "mutable": false },
+        { "name": "status", "type": "string", "value": "official", "mutable": true, "maxlength": 10 },
+        { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 700 },
+        { "name": "next", "type": "string", "value": "", "mutable": false, "maxlength": 56 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-article-chunk'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address." },
+        "article-id": { "description": "Article this chunk belongs to (back-reference; an isolated chunk is now attributable)." },
+        "root": { "description": "self-addr of the root distordia-article asset." },
+        "seq": { "description": "Chunk order index (1-based). Lets a reader verify a contiguous, complete chain." },
+        "status": { "description": "Chunk status.", "enum": ["official", "deleted", "hidden"] },
+        "text": { "description": "Continuation text chunk (max 700 chars)." },
+        "next": { "description": "self-addr of the next chunk (empty for the last)." }
+      },
+      "required": ["distordia-type", "article-id", "root", "seq", "text"]
+    }
+  ],
+  "examples": [
+    {
+      "_comment": "Recommended model: article as an off-chain-body content anchor.",
+      "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "content",
+      "schema-ver": "0.2.0",
+      "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "kind": "article",
+      "title": "Introduction to Decentralized Identity",
+      "author": "distordia-labs",
+      "cid": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+      "hash": "sha256:b2c3d4e5f6a7890123456789012345678901234567890123456789012345bcde",
+      "lang": "en"
+    },
+    {
+      "_comment": "Fallback model: hardened on-chain root with a continuation chunk.",
+      "address": "a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-article",
+      "schema-ver": "0.2.0",
+      "self-addr": "a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7",
+      "article-id": "decentralized-id-101",
+      "status": "official",
+      "title": "Introduction to Decentralized Identity",
+      "author": "distordia-labs",
+      "text": "Decentralized identity puts users in control of their digital presence...",
+      "article-hash": "sha256:c3d4e5f6a7b8901234567890123456789012345678901234567890123456cdef",
+      "tags": "identity,blockchain,web3",
+      "lang": "en",
+      "next": "b4d5e6f7a8b9012345678901234567890123456789012345678901234567"
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON json='[...]'",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilterByArticle": "distordia-type = 'distordia-article-chunk' AND article-id = '{id}'",
+    "reassembly": "Prefer the content-anchor model (fetch body by cid, verify hash). For the fallback chain: collect all chunks WHERE article-id = root.article-id, order by seq, verify contiguity and that the concatenation matches article-hash, then render."
+  },
+  "notes": [
+    "Primary model removes the 5000-char cap, orphan chunks, partial-delete holes, and the integrity gap by storing the body off-chain (decentralized) with an on-chain hash.",
+    "Fallback chain adds article-id, root back-pointer, seq, and article-hash so even the fully-on-chain path is attributable and integrity-checkable.",
+    "Successor draft to article.v0.1.0 (standards/article-standard.json), retained for history."
+  ]
+}

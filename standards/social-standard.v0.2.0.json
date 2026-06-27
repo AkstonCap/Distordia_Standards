@@ -1,0 +1,159 @@
+{
+  "$id": "https://distordia.com/standards/social.v0.2.0.json",
+  "title": "Distordia Social Standard (v0.2.0 draft)",
+  "description": "Successor draft to social.v0.1.0. Upgrades posts to the content-anchor conventions (content integrity 'hash', author NAMESPACE, unified 'status' vocabulary, self-addr links, optional off-chain body via 'cid' for long posts) AND adds the missing social-graph and engagement primitives the market evaluation flagged as the defining gap: 'distordia-follow' (graph edge) and 'distordia-reaction' (like/repost/bookmark). See docs/content-cluster-design-note.md and standards-market-evaluation.md §5.",
+  "version": "0.2.0",
+  "status": "draft",
+  "supersedesStandard": "social.v0.1.0.json (retained as standards/social-standard.json)",
+  "designNote": "docs/content-cluster-design-note.md",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB (system fields ~180 bytes). Most fields immutable/empty; a typical text post is well under 1KB. Polls/long media push toward the limit -- keep concise or use 'cid' for long bodies.",
+  "assetTypes": [
+    {
+      "type": "distordia-post",
+      "description": "A social post. Body inline for short posts; long bodies move off-chain via 'cid' (upgrade path to article without a separate standard).",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-post", "mutable": false, "maxlength": 16 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "status", "type": "string", "value": "user", "mutable": true, "maxlength": 10 },
+        { "name": "author", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "text", "type": "string", "value": "", "mutable": false, "maxlength": 512 },
+        { "name": "cid", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+        { "name": "hash", "type": "string", "value": "", "mutable": false, "maxlength": 72 },
+        { "name": "reply-to", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "quote", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "repost", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "media-type", "type": "string", "value": "none", "mutable": false, "maxlength": 8 },
+        { "name": "media-uri", "type": "string", "value": "", "mutable": false, "maxlength": 120 },
+        { "name": "media-hash", "type": "string", "value": "", "mutable": false, "maxlength": 72 },
+        { "name": "tags", "type": "string", "value": "", "mutable": false, "maxlength": 96 },
+        { "name": "mentions", "type": "string", "value": "", "mutable": false, "maxlength": 96 },
+        { "name": "lang", "type": "string", "value": "en", "mutable": false, "maxlength": 2 },
+        { "name": "poll-q", "type": "string", "value": "", "mutable": false, "maxlength": 96 },
+        { "name": "poll-opts", "type": "string", "value": "", "mutable": false, "maxlength": 160 },
+        { "name": "poll-exp", "type": "string", "value": "", "mutable": false, "maxlength": 10 },
+        { "name": "supersedes", "type": "string", "value": "", "mutable": false, "maxlength": 56 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-post'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address." },
+        "status": { "description": "Post status (unified vocabulary, replacing v0.1.0 'distordia-status').", "enum": ["official", "user", "deleted", "hidden"] },
+        "author": { "description": "Author NAMESPACE (attestable), replacing reliance on the raw owner genesis." },
+        "text": { "description": "Post body, max 512 chars. Empty when the body is off-chain via 'cid'." },
+        "cid": { "description": "Off-chain body CID (Arweave/IPFS) for posts longer than 512 chars; effectively a kind=article upgrade." },
+        "hash": { "description": "SHA-256 of the body for integrity (so a post is verifiable like content)." },
+        "reply-to": { "description": "self-addr of the parent post/article." },
+        "quote": { "description": "self-addr of the quoted post." },
+        "repost": { "description": "self-addr of the original (for reposts)." },
+        "media-type": { "description": "Attached media type.", "enum": ["none", "image", "video", "audio", "link"] },
+        "media-uri": { "description": "Media location (https / ipfs:// / ar://)." },
+        "media-hash": { "description": "SHA-256 of the media for integrity." },
+        "tags": { "description": "Comma-separated hashtags (no #)." },
+        "mentions": { "description": "Comma-separated namespaces mentioned." },
+        "lang": { "description": "ISO 639-1 language code." },
+        "poll-q": { "description": "Poll question." },
+        "poll-opts": { "description": "Pipe-separated poll options." },
+        "poll-exp": { "description": "Poll expiry (YYYY-MM-DD)." },
+        "supersedes": { "description": "self-addr of the prior version (edits)." }
+      },
+      "required": ["distordia-type", "author"]
+    },
+    {
+      "type": "distordia-follow",
+      "description": "Social-graph edge: follower -> following. The graph primitive missing from v0.1.0.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-follow", "mutable": false, "maxlength": 16 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "follower", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "following", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "status", "type": "string", "value": "active", "mutable": true, "maxlength": 12 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-follow'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address." },
+        "follower": { "description": "Following NAMESPACE (the asset owner)." },
+        "following": { "description": "Followed NAMESPACE." },
+        "status": { "description": "Edge state.", "enum": ["active", "unfollowed", "blocked", "muted"] }
+      },
+      "required": ["distordia-type", "follower", "following"]
+    },
+    {
+      "type": "distordia-reaction",
+      "description": "Engagement primitive: like / repost / bookmark on a target post.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-reaction", "mutable": false, "maxlength": 20 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "target", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "reactor", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "kind", "type": "string", "value": "like", "mutable": false, "maxlength": 12 },
+        { "name": "status", "type": "string", "value": "active", "mutable": true, "maxlength": 10 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-reaction'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address." },
+        "target": { "description": "self-addr of the post being reacted to." },
+        "reactor": { "description": "Reacting NAMESPACE." },
+        "kind": { "description": "Reaction type.", "enum": ["like", "bookmark", "celebrate", "laugh", "sad", "angry"] },
+        "status": { "description": "Reaction state.", "enum": ["active", "removed"] }
+      },
+      "required": ["distordia-type", "target", "reactor", "kind"]
+    }
+  ],
+  "examples": [
+    {
+      "_comment": "A short post with content integrity and author namespace.",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "version": 1,
+      "created": 1755775754,
+      "modified": 1755775754,
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-post",
+      "schema-ver": "0.2.0",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "status": "user",
+      "author": "satoshi",
+      "text": "Just deployed my first smart contract on Nexus!",
+      "hash": "sha256:d4e5f6a7b8c90123456789012345678901234567890123456789012345defa",
+      "tags": "blockchain,nexus,web3",
+      "lang": "en"
+    },
+    {
+      "_comment": "A follow edge.",
+      "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-follow",
+      "schema-ver": "0.2.0",
+      "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "follower": "satoshi",
+      "following": "distordia-labs",
+      "status": "active"
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON name=post-{timestamp} json='[...]'",
+    "stampSelfAddr": "assets/update/asset address=<returned-address> self-addr=\"<returned-address>\"",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilters": {
+      "posts": "distordia-type = 'distordia-post'",
+      "following": "distordia-type = 'distordia-follow' AND follower = '{namespace}' AND status = 'active'",
+      "reactions": "distordia-type = 'distordia-reaction' AND target = '{post self-addr}'"
+    }
+  },
+  "notes": [
+    "Adds the social GRAPH (distordia-follow) and ENGAGEMENT (distordia-reaction) primitives missing from v0.1.0 -- a feed is built by querying the follow graph then the followed authors' posts.",
+    "Posts gain content integrity (hash) + author namespace + unified status; long bodies move off-chain via cid (no separate article standard needed).",
+    "All cross-references (reply-to, quote, repost, target, supersedes) store the target's self-addr.",
+    "Per the market evaluation, post BODIES at social-media volume should be edge/off-chain with on-chain identity+graph+anchor; this schema is the on-chain anchor layer.",
+    "Successor draft to social.v0.1.0 (standards/social-standard.json), retained for history."
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "$id": "https://distordia.com/standards/nexgo-ride.v0.2.0.json",
+  "title": "NexGo Ride Standard (v0.2.0 draft)",
+  "description": "Successor draft to nexgo-ride.v0.1.0. Replaces the single passenger-asserted raw ride blob with THREE typed assets forming a real on-chain handshake: ride-request (passenger, geohash-bucketed for privacy), ride-offer (DRIVER-signed on the driver's own sigchain, with a quoted fare), and ride-agreement (passenger accepts a specific offer; fare LOCKED and bound to the invoice). Switched to JSON format so requests are queryable for p2p geo-sharded discovery. Atomic invoice settlement is kept. See docs/nexgo-cluster-design-note.md.",
+  "version": "0.2.0",
+  "status": "draft",
+  "supersedesStandard": "nexgo-ride.v0.1.0.json (retained as standards/nexgo-ride-standard.json)",
+  "designNote": "docs/nexgo-cluster-design-note.md",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB per asset (system fields ~180 bytes, ~820 bytes for data).",
+  "assetTypes": [
+    {
+      "type": "nexgo-ride-request",
+      "description": "Passenger's open request. Precise pickup is NOT on-chain -- only a coarse geohash bucket; exact pickup is shared p2p after match.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "nexgo-ride-request", "mutable": false, "maxlength": 24 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "passenger", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "pickup-geohash", "type": "string", "value": "", "mutable": false, "maxlength": 9 },
+        { "name": "dest-geohash", "type": "string", "value": "", "mutable": false, "maxlength": 9 },
+        { "name": "seats", "type": "uint8", "value": 1, "mutable": false },
+        { "name": "max-fare-milli", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "currency", "type": "string", "value": "NXS", "mutable": false, "maxlength": 8 },
+        { "name": "status", "type": "string", "value": "open", "mutable": true, "maxlength": 10 },
+        { "name": "expires-ts", "type": "uint64", "value": 0, "mutable": false }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'nexgo-ride-request'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address; referenced by offers as 'request'." },
+        "passenger": { "description": "Passenger NAMESPACE." },
+        "pickup-geohash": { "description": "Coarse pickup area (geohash, ~6 chars). Precise pickup shared p2p only after a match -- privacy by construction." },
+        "dest-geohash": { "description": "Coarse destination area (geohash)." },
+        "seats": { "description": "Passengers." },
+        "max-fare-milli": { "description": "Maximum fare the passenger will accept, in milli-units of 'currency'." },
+        "currency": { "description": "Fare currency." },
+        "status": { "description": "Request state.", "enum": ["open", "matched", "cancelled", "expired"] },
+        "expires-ts": { "description": "Unix expiry; drivers ignore expired requests." }
+      },
+      "required": ["distordia-type", "passenger", "pickup-geohash", "dest-geohash", "max-fare-milli"]
+    },
+    {
+      "type": "nexgo-ride-offer",
+      "description": "DRIVER-signed offer on the driver's own sigchain -- the on-chain consent handshake missing from v0.1.0.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "nexgo-ride-offer", "mutable": false, "maxlength": 24 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "request", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "driver", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "vehicle", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "quoted-fare-milli", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "currency", "type": "string", "value": "NXS", "mutable": false, "maxlength": 8 },
+        { "name": "eta-sec", "type": "uint32", "value": 0, "mutable": false },
+        { "name": "status", "type": "string", "value": "offered", "mutable": true, "maxlength": 10 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'nexgo-ride-offer'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address; referenced by the agreement as 'offer'." },
+        "request": { "description": "self-addr of the ride-request being bid on." },
+        "driver": { "description": "Driver NAMESPACE (the asset owner -- the offer is driver-signed)." },
+        "vehicle": { "description": "self-addr of the driver's nexgo-taxi asset." },
+        "quoted-fare-milli": { "description": "Offered fare in milli-units of 'currency' (must be <= request.max-fare-milli)." },
+        "currency": { "description": "Fare currency." },
+        "eta-sec": { "description": "Estimated seconds to pickup." },
+        "status": { "description": "Offer state.", "enum": ["offered", "withdrawn", "accepted", "declined"] }
+      },
+      "required": ["distordia-type", "request", "driver", "vehicle", "quoted-fare-milli"]
+    },
+    {
+      "type": "nexgo-ride-agreement",
+      "description": "Passenger accepts a specific driver offer; fare is LOCKED and bound to the invoice. References both request and offer self-addrs.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "nexgo-ride-agreement", "mutable": false, "maxlength": 24 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "request", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "offer", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "passenger", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "driver", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "fare-milli", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "currency", "type": "string", "value": "NXS", "mutable": false, "maxlength": 8 },
+        { "name": "invoice", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "status", "type": "string", "value": "agreed", "mutable": true, "maxlength": 12 },
+        { "name": "trip-hash", "type": "string", "value": "", "mutable": true, "maxlength": 72 },
+        { "name": "completed-ts", "type": "uint64", "value": 0, "mutable": true }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'nexgo-ride-agreement'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address; referenced by the rating as 'agreement'." },
+        "request": { "description": "self-addr of the ride-request." },
+        "offer": { "description": "self-addr of the accepted driver-signed offer (proves mutual consent)." },
+        "passenger": { "description": "Passenger NAMESPACE." },
+        "driver": { "description": "Driver NAMESPACE." },
+        "fare-milli": { "description": "Locked fare in milli-units; the Nexus invoice amount must equal this." },
+        "currency": { "description": "Fare currency." },
+        "invoice": { "description": "Reference to the Nexus invoice (atomic DEBIT + CLAIM settlement)." },
+        "status": { "description": "Agreement state.", "enum": ["agreed", "paid", "completed", "cancelled", "disputed"] },
+        "trip-hash": { "description": "Optional hash of the off-chain p2p trip record (evidence for disputes); coordinates stay off-chain." },
+        "completed-ts": { "description": "Unix completion time." }
+      },
+      "required": ["distordia-type", "request", "offer", "passenger", "driver", "fare-milli"]
+    }
+  ],
+  "lifecycle": {
+    "steps": [
+      "1. Passenger creates ride-request (geohash buckets, max-fare, status=open).",
+      "2. Drivers discover via geo-scoped on-chain query and create DRIVER-signed ride-offers (quoted-fare <= max-fare).",
+      "3. Passenger picks one offer and creates a ride-agreement referencing request+offer; fare locked. Exact pickup shared with that driver over p2p.",
+      "4. Driver creates a Nexus invoice for fare-milli; passenger pays atomically (DEBIT + CLAIM); agreement status=paid.",
+      "5. Trip occurs; live location over direct encrypted p2p (no coordinates on-chain). On completion, status=completed (+ optional trip-hash).",
+      "6. Passenger may submit a nexgo-rating referencing the agreement self-addr (verified-ride gating)."
+    ]
+  },
+  "examples": [
+    {
+      "_comment": "Open ride-request (coarse geohash buckets, no precise coordinates).",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "nexgo-ride-request",
+      "schema-ver": "0.2.0",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "passenger": "alice",
+      "pickup-geohash": "dr5regw",
+      "dest-geohash": "dr5ru7z",
+      "seats": 2,
+      "max-fare-milli": 18000,
+      "currency": "NXS",
+      "status": "open",
+      "expires-ts": 1769990400
+    },
+    {
+      "_comment": "Driver-signed offer referencing the request.",
+      "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "nexgo-ride-offer",
+      "schema-ver": "0.2.0",
+      "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "request": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "driver": "john-driver",
+      "vehicle": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6",
+      "quoted-fare-milli": 16500,
+      "currency": "NXS",
+      "eta-sec": 240,
+      "status": "offered"
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON name=nexgo-ride-req-{timestamp} json='[...]'",
+    "stampSelfAddr": "assets/update/asset address=<returned-address> self-addr=\"<returned-address>\"",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilters": {
+      "openRequestsNearby": "distordia-type = 'nexgo-ride-request' AND status = 'open' AND pickup-geohash LIKE '{geohash}%'",
+      "offersForRequest": "distordia-type = 'nexgo-ride-offer' AND request = '{request self-addr}'"
+    }
+  },
+  "notes": [
+    "Driver-signed offer fixes the v0.1.0 trust asymmetry (passenger could not legitimately assert the driver's acceptance).",
+    "Fare is agreed BEFORE payment and bound to the invoice -- no more post-acceptance surprise invoicing.",
+    "Coarse geohash buckets replace permanent on-chain coordinates; precise pickup is p2p after match.",
+    "Discovery is p2p on-chain via geohash-scoped queries; an optional permissionless indexer can cache shards.",
+    "Successor draft to nexgo-ride.v0.1.0 (standards/nexgo-ride-standard.json), retained for history."
+  ]
+}
