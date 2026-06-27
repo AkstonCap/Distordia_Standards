@@ -8,9 +8,12 @@
 > the passenger *asserts* the driver's acceptance (no on-chain handshake), the fare isn't agreed
 > before commitment, discovery is a global scan of every raw asset on the chain, ratings aren't
 > linked to real rides, and pickup/destination coordinates plus live GPS are written to a permanent
-> public ledger. The atomic invoice settlement is the one piece worth keeping. The fix: put only
-> **identity, the matching commitment, settlement, and verified-action links** on-chain, move
-> **location and matching off-chain/edge**, and make acceptance **driver-signed**.
+> public ledger. The atomic invoice settlement is the one piece worth keeping. The fix: keep
+> **identity, discovery, consent, settlement, and reputation fully p2p on-chain** (matching becomes
+> a geo-sharded on-chain query, not a matchmaker); push only **live location** to a **direct
+> encrypted p2p** channel; and make acceptance **driver-signed**. The *only* irreducibly trusted
+> parties are real-world **credential issuers** (license/insurance/KYC) and the **physical-world
+> dispute oracle** — see §5 for the full on-chain/off-chain/trusted boundary.
 
 ---
 
@@ -84,19 +87,21 @@ flowchart TB
         INV["Invoice (atomic DEBIT + CLAIM)<br/>amount == agreed fare"]
         RATE["rating<br/>refs agreement self-addr (verified ride)"]
     end
-    subgraph offchain["Off-chain / edge"]
-        IDX["Geo-index / matching service<br/>(type-scoped, sharded)"]
-        LOC["Live location channel<br/>p2p / websocket · signed · ephemeral"]
+    subgraph p2p["Off-chain but DECENTRALIZED (p2p, no central operator)"]
+        IDX["Optional permissionless indexers / DHT<br/>(geo query cache; anyone can run; replicable)"]
+        ROUTE["Routing / ETA / fare quote<br/>(open map data + client-side compute)"]
+        LOC["Live location: direct encrypted p2p<br/>(WebRTC / libp2p · ephemeral)"]
     end
 
     NS --> REQ
     NS --> OFFER
-    REQ --> IDX
-    IDX -->|"notifies nearby drivers"| OFFER
+    REQ -->|"driver discovers via geo-sharded on-chain query"| OFFER
+    IDX -.->|"optional query speed-up"| OFFER
+    ROUTE -.->|"proposes fare"| OFFER
     OFFER --> AGREE
     AGREE -->|"amount bound"| INV
     AGREE --> RATE
-    LOC -.->|"optional hash anchor"| AGREE
+    LOC -.->|"optional trip-completion hash"| AGREE
 ```
 
 ### 4.1 What changes
@@ -114,10 +119,16 @@ flowchart TB
   ride that didn't happen) and a provable rating↔ride mapping.
 - **Identity**: driver and passenger are **namespaces**; driver compliance (license, insurance, KYC)
   rides on the Namespace attestation/credential layer, not free-text strings.
-- **Location**: live position moves to an **off-chain signed channel**; on-chain keeps at most a
-  trip-completion hash. No permanent coordinate ledger.
-- **Discovery**: a **type-scoped, geo-sharded index** (off-chain matching service or per-region
-  index assets) replaces the global raw scan.
+- **Location**: live position moves to a **direct encrypted p2p channel** (WebRTC/libp2p) between the
+  matched passenger and driver — no server, no chain; on-chain keeps at most a trip-completion hash.
+  No permanent coordinate ledger.
+- **Discovery is p2p on-chain, not a matching service.** Ride requests are on-chain assets tagged by
+  **geohash shard**; a driver finds nearby work with a **geo-scoped on-chain query**
+  (`WHERE geohash LIKE '<cell>%' AND status = 'open'`) and responds with an on-chain `ride-offer`.
+  No central matchmaker decides who gets the ride — the passenger picks among signed offers. If the
+  register API is too slow to query at volume, a **permissionless indexer** (or DHT) can cache the
+  geo-shard — but anyone can run one and they are mutually verifiable against the chain, so this is
+  *decentralized off-chain*, never a single trusted operator.
 
 ### 4.2 `ride-offer` (driver-signed) sketch
 
@@ -139,7 +150,61 @@ Because the offer is created and signed by the driver's own sigchain, acceptance
 verifiable: the **passenger's `ride-agreement` references a driver-signed offer**, not a
 passenger-asserted genesis.
 
-## 5. Future mobility-ecosystem fit
+## 5. Fully p2p on-chain — what's achievable vs. what's irreducibly off-chain or trusted
+
+The goal is a **complete p2p on-chain service**. The honest result: **almost everything can be
+p2p on-chain or p2p off-chain; only two things are irreducibly trusted**, and both are instances of
+the same fundamental limit — *a blockchain cannot witness the physical/legal world.* Critically,
+**off-chain ≠ centralized**: most of what can't be on-chain can still be peer-to-peer with no central
+operator.
+
+Three tiers:
+
+| Component | Tier | How / why |
+|---|---|---|
+| Driver & passenger identity | **On-chain p2p** | Namespace assets / sigchain keys |
+| Ride request / offer / agreement (consent + fare) | **On-chain p2p** | Signed assets on each party's own sigchain |
+| Payment & settlement | **On-chain p2p** | Nexus atomic invoice (DEBIT + CLAIM) — already ideal |
+| Ratings & reputation aggregation | **On-chain p2p** | Rating asset gated on agreement; anyone can aggregate |
+| Discovery / matching | **On-chain p2p** | Geo-sharded on-chain queries; passenger picks signed offers |
+| Live location stream | **Off-chain, decentralized** | Direct encrypted p2p (WebRTC/libp2p). On-chain is impossible (cost/throughput) **and** undesirable (permanent public location ledger). Still no central server. |
+| Routing / ETA / fare *quote* | **Off-chain, decentralized** | Open map data (OpenStreetMap) + client-side compute. The agreed fare is on-chain; only the *computation* is off-chain. |
+| Query performance at scale | **Off-chain, decentralized** | Optional permissionless indexers / DHT; replicable, verifiable against chain — not a single operator |
+| KYC / driver's-license / insurance **issuance** | **Irreducibly trusted** | A DMV/insurer/KYC provider must attest real-world facts. The credential is stored & verified on-chain (as a VC/attestation), but the **issuer is an external authority** — the *oracle into legal reality*. No protocol can manufacture this trust. |
+| Dispute facts about the physical world | **Irreducibly trusted (oracle)** | "Did the car actually arrive?" is a real-world fact the chain can't observe. *Resolution* can be decentralized (Kleros-style juror DAO voting on signed GPS/photo evidence), but the **evidence and ultimate human judgment** are a trust layer. |
+
+```mermaid
+flowchart TB
+    subgraph onchain["✅ Fully p2p ON-CHAIN"]
+        ID2["identity"]
+        FLOW["request · offer · agreement"]
+        PAY2["atomic settlement"]
+        REP2["ratings · reputation"]
+        DISC["geo-sharded discovery"]
+    end
+    subgraph decentral["🟡 Off-chain but DECENTRALIZED (p2p, no operator)"]
+        LOC2["live location (encrypted p2p)"]
+        ROUTE2["routing / fare quote (open data + client)"]
+        IDX2["permissionless indexers / DHT"]
+    end
+    subgraph trusted["🔴 IRREDUCIBLY TRUSTED (the oracle boundary)"]
+        ISS["real-world credential issuers<br/>DMV · insurer · KYC"]
+        ORA["physical-world dispute facts<br/>(evidence + human judgement)"]
+    end
+
+    ISS -->|"issues VC, stored on-chain"| onchain
+    decentral -->|"feeds quotes / evidence"| onchain
+    ORA -->|"signed evidence → arbitration"| onchain
+```
+
+**Bottom line for the design:** NexGo can be a *complete p2p on-chain service* for everything that is
+digital and consent-based. The only unavoidable trusted parties are the **real-world authorities**
+(license/insurance/KYC issuers) and the **physical-world oracle** for disputes — and these are
+limits of reality, not of the protocol. The design's job is to (a) keep them at the *edge* (a thin
+attestation/evidence boundary), and (b) make every issuer/juror role *swappable and competitive*
+rather than a single hard-coded operator.
+
+## 6. Future mobility-ecosystem fit
 
 ```mermaid
 flowchart LR
@@ -171,22 +236,24 @@ KYC/insurance arrive as verifiable credentials on the driver's namespace, routin
 disputes route to decentralized arbitration, and reputation reuses the ecosystem-wide primitive
 (see market evaluation §13, P0).
 
-## 6. Roadmap (additive where possible)
+## 7. Roadmap (additive where possible)
 
 | Step | Change | Unlocks |
 |---|---|---|
-| N1 | Move live GPS + matching **off-chain**; keep taxi registration on-chain | scale + driver location privacy |
+| N1 | Move live GPS to **direct encrypted p2p**; keep taxi registration on-chain | scale + driver location privacy, no operator |
 | N2 | **`ride-offer`** (driver-signed) + **`ride-agreement`** (fare-locked) | real on-chain consent + agreed fare |
 | N3 | Bind invoice amount to agreement fare; keep atomic settlement | dispute-resistant payment |
 | N4 | Gate **`rating`** on a `ride-agreement` self-addr; unify driver identity to Namespace | trustworthy reviews |
-| N5 | Geohash-bucket requests; type-scoped/geo-sharded index | privacy + discovery at scale |
-| N6 | Driver compliance via Namespace credentials; decentralized arbitration | regulatory operability |
+| N5 | Geohash-shard requests; **on-chain geo-scoped query** (+ optional permissionless indexer) | privacy + p2p discovery at scale |
+| N6 | Driver compliance via Namespace credentials (VCs); juror-DAO arbitration | regulatory operability, decentralized disputes |
 
-## 7. Open questions
+## 8. Open questions (the irreducible edges)
 
-- Where does the **matching service** sit on the centralization spectrum (operator, per-region index
-  assets, or fully p2p)? It is the main remaining trust/scale tradeoff.
-- Minimum on-chain footprint for **regulatory trip records** (some jurisdictions require retained
-  trip logs) vs. the privacy goal of keeping coordinates off-chain.
-- No-show / cancellation symmetry: penalties for both sides without reintroducing operator-mediated
-  escrow.
+- **Regulatory trip records vs. privacy.** Some jurisdictions require retained trip logs — what is
+  the minimum on-chain footprint (e.g. a commitment/hash, with the encrypted detail held p2p) that
+  satisfies a regulator without building a public location ledger?
+- **Physical-world dispute oracle.** Resolution can be a juror DAO, but the *evidence* (GPS traces,
+  photos) is off-chain and the *judgement* is human — how are jurors incentivised and evidence
+  authenticated without a single trusted operator?
+- **No-show / cancellation symmetry** without reintroducing operator-mediated escrow (Nexus
+  conditional contracts vs. a small mutual bond).

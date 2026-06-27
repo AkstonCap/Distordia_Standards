@@ -201,7 +201,49 @@ as **ClaimReview**. The Namespace standard supplies verifiable authorship to all
 | C3 | Social: adopt anchor conventions; unify status vocabulary; `self-addr` links | verifiable, composable posts |
 | C4 | `claim-review` type + ClaimReview/C2PA/Arweave/federation bridges | fact-checking + external interop |
 
-## 7. Open questions
+## 7. Fully p2p on-chain — the trust boundary
+
+The goal is a **complete p2p on-chain service**, and the content cluster gets very close — provided
+we remember that **off-chain storage ≠ centralized storage**. Arweave and IPFS are *decentralized*
+networks; moving article/media bodies there keeps the system p2p while taking unbounded bodies off
+the ledger. Only two things are irreducibly trusted, and both concern *truth/provenance the chain
+cannot adjudicate*.
+
+| Component | Tier | How / why |
+|---|---|---|
+| Content anchor (`cid` · `hash` · `phash` · author-ns · supersedes) | **On-chain p2p** | Asset on the author's sigchain |
+| Short social posts | **On-chain p2p** | Fit in one asset |
+| Article/media metadata, `claim-review`, reputation | **On-chain p2p** | Assets; anyone can aggregate |
+| Article & media **body** | **Off-chain, decentralized** | Arweave (permanent, pay-once) or IPFS — p2p networks, not a server. Addressed by `cid`, integrity-checked by on-chain `hash`. |
+| Body **availability/permanence** | **Off-chain, decentralized** | Arweave's endowment guarantees permanence with no central pinner; IPFS needs a pin SLA (the weaker choice). |
+| **C2PA signing root** (optional interop) | **Irreducibly trusted** | C2PA signatures chain to CAs / hardware (camera, Adobe). An external trust anchor — only relevant when bridging to C2PA. |
+| **Truth of a claim** (fact-check verdict) | **Irreducibly trusted (oracle)** | "Is this claim true?" is editorial judgement. The `claim-review` asset lives on-chain, but the *verdict* is asserted by a reviewer (reputation-weighted, ideally several). The chain can anchor *who said what*, never *what is true*. |
+
+```mermaid
+flowchart TB
+    subgraph onchain["✅ Fully p2p ON-CHAIN"]
+        ANC["content anchor (cid · hash · author)"]
+        POSTS["social posts"]
+        CRV["claim-review · reputation"]
+    end
+    subgraph decentral["🟡 Off-chain but DECENTRALIZED (p2p)"]
+        STORE2["Arweave / IPFS bodies (cid)"]
+    end
+    subgraph trusted["🔴 IRREDUCIBLY TRUSTED"]
+        SIGN["C2PA signing roots (optional)"]
+        TRUTH["claim truth (human verdict)"]
+    end
+
+    STORE2 -->|"body, integrity-checked by on-chain hash"| ANC
+    SIGN -.->|"signs manifest"| ANC
+    TRUTH -->|"asserts verdict, anchored on-chain"| CRV
+```
+
+**Bottom line:** publishing, provenance, threading, versioning, and reputation are all p2p on-chain;
+bodies are p2p off-chain (Arweave). The only unavoidable trust is in *who vouches for truth* (fact
+checkers) and the *optional* external C2PA signing roots — both kept at a thin, swappable edge.
+
+## 8. Open questions
 
 - Permanence policy: Arweave (permanent, pay-once) vs IPFS (pin-or-perish) — pick a default and a
   pinning SLA tied to namespace tier.
