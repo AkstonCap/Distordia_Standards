@@ -760,8 +760,10 @@ Distordia_Standards/
     product-standard.v0.2.0.solana.json  # Product masterdata v0.2.0 on Solana (same schema, Borsh PDA)
     nft-standard.json                    # NFT marketplace (10 fields)
     player-standard.json                 # Fantasy football (31 fields)
-    agent-standard.json                  # AI agent registry (25 fields)
-    swarm-standard.json                  # Swarm + missions (18 + 26 fields)
+    agent-standard.json                  # AI agent registry v0.1.0 (25 fields)
+    agent-card-standard.v0.2.0.json      # Agent Card v0.2.0 draft (agent + swarm; discovery/binding/trust)
+    swarm-standard.json                  # Swarm + missions v0.1.0 (18 + 26 fields)
+    agreement-standard.v0.2.0.json       # Agreement v0.2.0 draft (request/offer/agreement; shared by swarm + NexGo)
     article-standard.json               # Long-form articles v0.1.0 (11 + 5 fields)
     article-standard.v0.2.0.json        # Articles v0.2.0 draft (off-chain body + hardened chunk fallback)
     nexgo-taxi-standard.json            # NexGo taxi registry v0.1.0 (9 fields)
@@ -774,9 +776,19 @@ Distordia_Standards/
 
 > **v0.2.0 drafts** implement the redesigns from the cluster design notes
 > ([content](docs/content-cluster-design-note.md), [NexGo](docs/nexgo-cluster-design-note.md)) and
-> the [product MRP analysis](docs/product-masterdata-mrp-analysis.md), plus the
-> [Nexus namespace alignment note](docs/namespace-nexus-alignment-note.md). Each keeps its v0.1.0
-> file unchanged for history. The remaining standards (agent, swarm, nft, player) have
+> the [product MRP analysis](docs/product-masterdata-mrp-analysis.md), plus the Nexus alignment notes
+> for [namespace](docs/namespace-nexus-alignment-note.md) and
+> [agent & swarm](docs/agent-swarm-nexus-alignment-note.md). Each keeps its v0.1.0 file unchanged for
+> history.
+>
+> **Consolidation in v0.2.0:** because a Distordia agent holds its **own sigchain**, identity,
+> signing, and settlement are native Nexus capabilities. The `agent` and `swarm` standards therefore
+> collapse into two: **`agent-card`** (discovery, endpoint/key binding, revocable credential — plus
+> swarms via `kind: "swarm"`) and a generic **`agreement`** (request → counterparty-signed offer →
+> terms-locked agreement, with custody delegated to native conditional contracts). NexGo Ride reuses
+> the shared agreement instead of its own offer/agreement types.
+>
+> The remaining standards (nft, player) have
 > [market-evaluation](docs/standards-market-evaluation.md) recommendations but no v0.2.0 draft yet.
 
 ---

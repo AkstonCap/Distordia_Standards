@@ -156,28 +156,41 @@ flowchart LR
 
 ---
 
-## 4. Proposed changes (v0.2.0 sketch)
+## 4. Resolution — agents hold their own sigchain, so both standards consolidate
 
-**Agent**
-| Change | Native primitive used |
-|---|---|
-| Name agents `parent.namespace::agent.id`; constrain the id | Names & namespaces |
-| Add `agent-genesis` (own sigchain) **or** state "policy-only, not chain-enforced" | Sigchain |
-| Add `pubkey` / `key-slot` for endpoint + message signature verification | Crypto object register |
-| Add `spend-account` (funded account address) alongside `max-tx-value` | Token/account registers |
-| Make the kill path a **revocable credential** or parent-owned status field | Ownership / tokens |
-| Drop `created-ts` unless semantically distinct from `created` | System attributes |
+**Decision:** a Distordia agent **has its own signature chain**. That makes identity, ownership,
+signing, and transacting native, and removes roughly two-thirds of both standards. But it does *not*
+remove the need for a standard, because Nexus provides identity — not **discovery**, **endpoint
+binding**, or **trust**.
 
-**Swarm**
-| Change | Native primitive used |
-|---|---|
-| Replace the `escrow` integer + Distordia custody with a **conditional contract reference** | Conditional contracts |
-| Map `deadline-ts` / `penalty-late` to contract **expiration/redemption** | Native expiry |
-| Add `stake-account` / `payment-account` register addresses | Token/account registers |
-| Replace `members` string with **namespaced names or a membership token** | Names / tokens |
-| Derive `missions-*` and `reputation` by query; stop storing them | On-chain mission assets |
-| Split the mission into request → counterparty-signed offer → agreement | Mirrors NexGo Ride v0.2.0 |
-| Route disputes to decentralized arbitration | Non-custodial arbitration |
+It also produces a counterintuitive safety consequence: **a sovereign sigchain cannot be shut down
+by anyone.** v0.1.0's `kill-switch` was already unenforceable (only the owner can write their own
+asset); agent autonomy makes that permanent. The enforceable mechanism is a **revocable operating
+credential** — an authority stops vouching and counterparties refuse to deal. Autonomy therefore
+*raises* the stakes on the trust layer rather than removing it.
+
+Four asset types collapse into two standards:
+
+| Was | Now | Why |
+|---|---|---|
+| `agent` (24 fields) | **`agent-card`** — discovery, endpoint/key binding, revocable credential | Only what a sigchain can't give you |
+| `swarm` registration (17 fields) | same **`agent-card`** with `kind: "swarm"` + `members-token` | A swarm is a party with token-based membership |
+| `swarm-mission` (25 fields) | **`agreement`** — request → counterparty-signed offer → terms-locked agreement | Custody delegated to native conditional contracts |
+| `nexgo-ride-offer` / `-agreement` | same **`agreement`** (`domain: "nexgo.ride"`) | Structurally identical handshake |
+
+Net: **12 standards → 11**; ~44 agent+swarm fields → ~18 + a shared agreement primitive that
+`swarm.mission`, `nexgo.ride`, and `product.sourcing` all reuse.
+
+**Dropped as redundant or unenforceable:** `agent-id`+`namespace`, `can-transact`, `can-sign`,
+`max-tx-value`, `kill-switch`/`kill-auth`, `rate-rpm`/`rate-rpd`, `created-ts`, `model`,
+`context-window`, `swarm-id`, `members`, `member-count`, `stake`, `missions-done`/`failed`,
+`reputation`, `escrow`, `payment-type`, `penalty-*`, `progress`, `dispute-reason`, and the
+2% escrow / 50 DIST dispute fees.
+
+**Implemented in:** [`agent-card-standard.v0.2.0.json`](../standards/agent-card-standard.v0.2.0.json)
+and [`agreement-standard.v0.2.0.json`](../standards/agreement-standard.v0.2.0.json);
+[`nexgo-ride-standard.v0.2.0.json`](../standards/nexgo-ride-standard.v0.2.0.json) now keeps only its
+domain request profile and reuses the shared offer/agreement.
 
 ## 5. What stays as-is
 
@@ -188,8 +201,9 @@ track record) is genuinely novel; only its custody and trust model need replacin
 
 ## 6. Open questions
 
-- **Does a Distordia agent hold its own sigchain?** This is a product decision, not a schema one,
-  and it determines whether A2/A5 are solvable today or must wait for the Sigchain Ledger VM.
+- ~~Does a Distordia agent hold its own sigchain?~~ **Resolved: yes** (see §4). Consequently
+  `can-transact`/`max-tx-value` were dropped rather than documented as policy, and the kill-switch
+  was replaced by a revocable credential.
 - **Exact conditional-contract syntax** (condition grammar, how expiry is expressed in the API) was
   not verifiable in detail from public docs during this review — confirm before writing v0.2.0
   schemas that reference it.

@@ -1,7 +1,7 @@
 {
   "$id": "https://distordia.com/standards/nexgo-rating.v0.2.0.json",
   "title": "NexGo Rating Standard (v0.2.0 draft)",
-  "description": "Successor draft to nexgo-rating.v0.1.0. Replaces the per-passenger raw blob (which allowed rating anyone and required a global raw scan to read) with ONE typed rating asset per completed ride, GATED on a nexgo-ride-agreement self-addr (verified-ride gating) and queryable per driver. See docs/nexgo-cluster-design-note.md.",
+  "description": "Successor draft to nexgo-rating.v0.1.0. Replaces the per-passenger raw blob (which allowed rating anyone and required a global raw scan to read) with ONE typed rating asset per completed ride, GATED on a settled distordia-agreement self-addr (agreement.v0.2.0, domain='nexgo.ride') for verified-ride gating, and queryable per driver. See docs/nexgo-cluster-design-note.md.",
   "version": "0.2.0",
   "status": "draft",
   "supersedesStandard": "nexgo-rating.v0.1.0.json (retained as standards/nexgo-rating-standard.json)",
@@ -27,7 +27,7 @@
     "distordia-type": { "description": "Must be 'nexgo-rating'." },
     "schema-ver": { "description": "Schema version. '0.2.0'." },
     "self-addr": { "description": "Queryable copy of this asset's register address." },
-    "agreement": { "description": "self-addr of the completed nexgo-ride-agreement this rating is for. The verified-ride gate: a rating is only valid if it references a real, completed agreement whose passenger == rater and driver == ratee." },
+    "agreement": { "description": "self-addr of the completed distordia-agreement (agreement.v0.2.0, domain='nexgo.ride') this rating is for. The verified-ride gate: a rating is only valid if it references a real, settled agreement whose party-a == rater and party-b == ratee." },
     "rater": { "description": "Rating party NAMESPACE (the passenger of the agreement). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
     "ratee": { "description": "Rated party NAMESPACE (the driver of the agreement). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
     "score": { "description": "Overall rating, 1 (worst) to 5 (best)." },
@@ -81,7 +81,7 @@
     "queryFilter": "distordia-type = 'nexgo-rating' AND ratee = '{driver namespace}' AND status = 'active'"
   },
   "notes": [
-    "Verified-ride gating: a rating must reference a completed nexgo-ride-agreement -- you can no longer rate a driver you never rode with (the core v0.1.0 weakness).",
+    "Verified-ride gating: a rating must reference a settled distordia-agreement (shared type from agreement.v0.2.0) -- you can no longer rate a driver you never rode with (the core v0.1.0 weakness).",
     "Typed JSON + per-ratee query replaces the v0.1.0 global raw scan, which did not scale.",
     "One rating asset per ride (on the passenger's sigchain), not one growing blob per passenger.",
     "Successor draft to nexgo-rating.v0.1.0 (standards/nexgo-rating-standard.json), retained for history."

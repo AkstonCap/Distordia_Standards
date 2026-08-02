@@ -1,0 +1,201 @@
+{
+  "$id": "https://distordia.com/standards/agreement.v0.2.0.json",
+  "title": "Distordia Agreement Standard (v0.2.0 draft)",
+  "description": "Generic two-party commitment primitive: request -> COUNTERPARTY-SIGNED offer -> terms-locked agreement -> NATIVE settlement. Successor to the MissionContract half of swarm.v0.1.0, and the shared replacement for nexgo-ride's bespoke offer/agreement types. Custody is NOT modelled here: funds are held by a native Nexus CONDITIONAL CONTRACT (or Invoice), which releases on conditions and is redeemable by the sender after expiry. This removes v0.1.0's custodial, Distordia-mediated escrow (a mutable integer plus a 2% fee and a 50 DIST dispute fee). See docs/agent-swarm-nexus-alignment-note.md.",
+  "version": "0.2.0",
+  "status": "draft",
+  "supersedesStandard": "the MissionContract definition of swarm.v0.1.0.json (retained for history); also supersedes nexgo-ride-offer and nexgo-ride-agreement from nexgo-ride.v0.2.0",
+  "designNote": "docs/agent-swarm-nexus-alignment-note.md",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB per asset (system fields ~180 bytes, ~820 bytes for data). Detailed terms/specifications live off-chain via spec-uri and are integrity-checked by spec-hash.",
+  "principles": {
+    "mutualConsent": "Each party writes on its OWN sigchain: the requester creates the request, the offeror creates the offer, the requester creates the agreement referencing that offer. No party can assert another party's consent -- the defect this fixes in both swarm.v0.1.0 (one asset, one signer) and nexgo-ride.v0.1.0 (passenger asserted the driver's acceptance).",
+    "nativeCustody": "The agreement REFERENCES a native conditional contract / invoice that actually holds value. Nexus conditional contracts release funds when conditions evaluate true and become redeemable by the sender after a set period -- giving deadline-plus-refund semantics natively. Never store escrow as a mutable integer.",
+    "noOperatorInTheMiddle": "There is no protocol fee to Distordia and no Distordia-held escrow. Disputes route to arbitration agreed by the parties; Nexus explicitly supports non-custodial escrow and arbitration.",
+    "derivedReputation": "Track record is computed by querying agreements where a namespace is party-a or party-b, filtered by final status. Never stored as self-written counters.",
+    "domainProfiles": "A domain MAY define its own request type when domain-specific fields must be queryable for discovery (e.g. nexgo-ride-request needs pickup/dest geohash). Domains MUST use the generic offer and agreement types below, because that is where the shape is genuinely identical."
+  },
+  "assetTypes": [
+    {
+      "type": "distordia-request",
+      "description": "Generic open request for goods, services or work. Created on the requester's sigchain.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-request", "mutable": false, "maxlength": 24 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "domain", "type": "string", "value": "", "mutable": false, "maxlength": 24 },
+        { "name": "requester", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "summary", "type": "string", "value": "", "mutable": false, "maxlength": 128 },
+        { "name": "spec-uri", "type": "string", "value": "", "mutable": false, "maxlength": 96 },
+        { "name": "spec-hash", "type": "string", "value": "", "mutable": false, "maxlength": 72 },
+        { "name": "qty", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "unit", "type": "string", "value": "EA", "mutable": false, "maxlength": 8 },
+        { "name": "max-price-milli", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "currency", "type": "string", "value": "NXS", "mutable": false, "maxlength": 8 },
+        { "name": "deliver-by-ts", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "status", "type": "string", "value": "open", "mutable": true, "maxlength": 10 },
+        { "name": "expires-ts", "type": "uint64", "value": 0, "mutable": false }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-request'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address; referenced by offers as 'request'." },
+        "domain": { "description": "Application domain, so one primitive serves many use cases and consumers can filter.", "enum": ["swarm.mission", "nexgo.ride", "product.sourcing", "general"] },
+        "requester": { "description": "Requesting NAMESPACE. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
+        "summary": { "description": "Short human-readable statement of what is wanted. Full terms belong in the off-chain spec." },
+        "spec-uri": { "description": "Location of the detailed specification (ar:// / ipfs:// / https)." },
+        "spec-hash": { "description": "SHA-256 of the specification, so both parties provably agreed to the same terms." },
+        "qty": { "description": "Quantity requested (integer; use the smallest unit to avoid floats)." },
+        "unit": { "description": "Unit of the quantity (e.g. EA, KG, HR, KM)." },
+        "max-price-milli": { "description": "Maximum acceptable price in milli-units of 'currency' (integer; divide by 1000)." },
+        "currency": { "description": "Settlement currency/token (e.g. NXS, DIST)." },
+        "deliver-by-ts": { "description": "Unix time by which delivery/performance is required." },
+        "status": { "description": "Request state.", "enum": ["open", "matched", "cancelled", "expired"] },
+        "expires-ts": { "description": "Unix expiry after which offerors should ignore this request." }
+      },
+      "required": ["distordia-type", "domain", "requester", "summary", "max-price-milli"]
+    },
+    {
+      "type": "distordia-offer",
+      "description": "COUNTERPARTY-SIGNED offer against a request, created on the OFFEROR'S OWN sigchain. This is the on-chain consent handshake; an agreement is only valid if it references a real offer authored by the counterparty.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-offer", "mutable": false, "maxlength": 24 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "request", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "offeror", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "price-milli", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "currency", "type": "string", "value": "NXS", "mutable": false, "maxlength": 8 },
+        { "name": "deliver-by-ts", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "eta-sec", "type": "uint32", "value": 0, "mutable": false },
+        { "name": "resource", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "status", "type": "string", "value": "offered", "mutable": true, "maxlength": 10 }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-offer'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address; referenced by the agreement as 'offer'." },
+        "request": { "description": "self-addr of the distordia-request (or domain request profile) being bid on." },
+        "offeror": { "description": "Offering NAMESPACE -- the owner of this asset, which is what makes the offer self-signed. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
+        "price-milli": { "description": "Offered price in milli-units of 'currency'. MUST be <= the request's max-price-milli." },
+        "currency": { "description": "Settlement currency/token." },
+        "deliver-by-ts": { "description": "Unix time the offeror commits to deliver by." },
+        "eta-sec": { "description": "Optional estimated seconds until start/arrival (used by time-sensitive domains such as nexgo.ride)." },
+        "resource": { "description": "Optional self-addr of the asset backing this offer -- e.g. a nexgo-taxi vehicle, an agent-card, or a product record." },
+        "status": { "description": "Offer state.", "enum": ["offered", "withdrawn", "accepted", "declined", "expired"] }
+      },
+      "required": ["distordia-type", "request", "offeror", "price-milli"]
+    },
+    {
+      "type": "distordia-agreement",
+      "description": "The requester accepts one specific offer. Price and terms are LOCKED, both parties are recorded, and settlement is delegated to a native conditional contract / invoice.",
+      "nexusFields": [
+        { "name": "distordia-type", "type": "string", "value": "distordia-agreement", "mutable": false, "maxlength": 24 },
+        { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+        { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "domain", "type": "string", "value": "", "mutable": false, "maxlength": 24 },
+        { "name": "request", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "offer", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+        { "name": "party-a", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "party-b", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+        { "name": "price-milli", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "currency", "type": "string", "value": "NXS", "mutable": false, "maxlength": 8 },
+        { "name": "contract", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+        { "name": "deliver-by-ts", "type": "uint64", "value": 0, "mutable": false },
+        { "name": "status", "type": "string", "value": "agreed", "mutable": true, "maxlength": 12 },
+        { "name": "proof-hash", "type": "string", "value": "", "mutable": true, "maxlength": 72 },
+        { "name": "completed-ts", "type": "uint64", "value": 0, "mutable": true }
+      ],
+      "fieldDefinitions": {
+        "distordia-type": { "description": "Must be 'distordia-agreement'." },
+        "schema-ver": { "description": "Schema version. '0.2.0'." },
+        "self-addr": { "description": "Queryable copy of this asset's register address; referenced by ratings, deliverables and reputation queries." },
+        "domain": { "description": "Application domain, copied from the request.", "enum": ["swarm.mission", "nexgo.ride", "product.sourcing", "general"] },
+        "request": { "description": "self-addr of the request." },
+        "offer": { "description": "self-addr of the ACCEPTED counterparty-signed offer. This reference is the proof of mutual consent." },
+        "party-a": { "description": "Requesting NAMESPACE (buyer). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
+        "party-b": { "description": "Performing NAMESPACE (seller). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
+        "price-milli": { "description": "LOCKED price in milli-units of 'currency', equal to the accepted offer's price. The native contract/invoice amount MUST equal this." },
+        "currency": { "description": "Settlement currency/token." },
+        "contract": { "description": "Reference to the NATIVE Nexus conditional contract or invoice that actually holds and releases value. Custody lives there, not in this record -- there is deliberately no 'escrow' integer field." },
+        "deliver-by-ts": { "description": "Unix delivery deadline. Enforcement is native: if conditions are not satisfied, the conditional contract becomes redeemable by the sender after its expiry period." },
+        "status": { "description": "Agreement state.", "enum": ["agreed", "funded", "delivered", "settled", "cancelled", "disputed", "expired"] },
+        "proof-hash": { "description": "SHA-256 of off-chain delivery evidence (delivery note, trip record, inspection report). The chain anchors the evidence; judging real-world performance remains an oracle/arbitration function." },
+        "completed-ts": { "description": "Unix completion time." }
+      },
+      "required": ["distordia-type", "domain", "request", "offer", "party-a", "party-b", "price-milli"]
+    }
+  ],
+  "droppedFromSwarmV010": {
+    "_comment": "MissionContract fields deliberately removed.",
+    "escrow": "Custodial integer replaced by a reference to a native conditional contract that actually holds funds.",
+    "payment-type": "Redundant: settlement semantics are expressed by the native contract's conditions.",
+    "penalty-late / penalty-max": "Native contract expiry/redemption provides deadline-plus-refund. Bespoke penalties may be encoded as contract conditions.",
+    "final-payment": "Derived from the settled contract, not asserted.",
+    "dispute-reason + 50 DIST filing fee + 2% escrow fee": "Removed with the operator-in-the-middle model; disputes route to arbitration agreed by the parties.",
+    "contractor-swarm / contractee-swarm": "A swarm is just a party (an agent-card with kind='swarm'); no separate field needed.",
+    "progress": "A mutable self-reported percentage proves nothing; status transitions plus proof-hash are verifiable."
+  },
+  "examples": [
+    {
+      "_comment": "A swarm mission expressed as a generic request.",
+      "address": "93cGfSEXtu6mh8HxxjJFLDCNhBjw9dZVSQPmLUGuI8Y3Hjq0Eoz",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-request",
+      "schema-ver": "0.2.0",
+      "self-addr": "93cGfSEXtu6mh8HxxjJFLDCNhBjw9dZVSQPmLUGuI8Y3Hjq0Eoz",
+      "domain": "swarm.mission",
+      "requester": "forge.manufacturing",
+      "summary": "Deliver 1000 widget units from Factory A to Warehouse B",
+      "spec-uri": "ar://7tUvWxYz1aBcDeFgHiJkLmNoPqRsTuVwX9kLmN2pQrS",
+      "spec-hash": "sha256:c3d4e5f6a7b8901234567890123456789012345678901234567890123456cdef",
+      "qty": 1000,
+      "unit": "EA",
+      "max-price-milli": 600000,
+      "currency": "DIST",
+      "deliver-by-ts": 1769990400,
+      "status": "matched",
+      "expires-ts": 1769731200
+    },
+    {
+      "_comment": "The agreement: both parties consented, price locked, custody delegated to a native contract.",
+      "address": "f6a7b8c9d0e1234567890123456789012345678901234567890123456789",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "distordia-agreement",
+      "schema-ver": "0.2.0",
+      "self-addr": "f6a7b8c9d0e1234567890123456789012345678901234567890123456789",
+      "domain": "swarm.mission",
+      "request": "93cGfSEXtu6mh8HxxjJFLDCNhBjw9dZVSQPmLUGuI8Y3Hjq0Eoz",
+      "offer": "a7b8c9d0e1f2345678901234567890123456789012345678901234567890",
+      "party-a": "forge.manufacturing",
+      "party-b": "acme.corp",
+      "price-milli": 500000,
+      "currency": "DIST",
+      "contract": "b8c9d0e1f2a3456789012345678901234567890123456789012345678901",
+      "deliver-by-ts": 1769990400,
+      "status": "funded"
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON name={party}::agreement.{id} json='[...]'",
+    "stampSelfAddr": "assets/update/asset address=<returned-address> self-addr=\"<returned-address>\"",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilters": {
+      "openRequestsInDomain": "distordia-type = 'distordia-request' AND domain = 'swarm.mission' AND status = 'open'",
+      "offersForRequest": "distordia-type = 'distordia-offer' AND request = '{request self-addr}'",
+      "trackRecord": "distordia-type = 'distordia-agreement' AND party-b = '{namespace}' AND status = 'settled'"
+    },
+    "settlement": "Fund and settle via native conditional contracts (or the Invoices API for simple pay-on-delivery, as nexgo.ride does). The contract amount MUST equal the agreement's price-milli."
+  },
+  "notes": [
+    "One primitive replaces swarm-mission and nexgo-ride's bespoke offer/agreement types; product.sourcing can reuse it for purchase commitments.",
+    "Mutual consent is structural: each party writes on its own sigchain, and the agreement's 'offer' reference proves the counterparty actually agreed.",
+    "Custody is native. There is intentionally NO escrow integer, no protocol fee, and no operator holding funds.",
+    "Reputation and track record are derived by querying settled/failed agreements per namespace -- see the ecosystem-wide finding that reputation must have provenance.",
+    "Domains may define request profiles with queryable domain fields (e.g. nexgo-ride-request), but MUST use the generic offer and agreement."
+  ]
+}

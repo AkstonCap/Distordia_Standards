@@ -1,0 +1,140 @@
+{
+  "$id": "https://distordia.com/standards/agent-card.v0.2.0.json",
+  "title": "Distordia Agent Card Standard (v0.2.0 draft)",
+  "description": "Consolidated successor to agent.v0.1.0 AND the swarm registration half of swarm.v0.1.0. Premise: a Distordia agent HAS ITS OWN SIGCHAIN, so identity, ownership, signing and transacting are native Nexus capabilities and must not be re-declared here. What Nexus does NOT provide is DISCOVERY (finding an agent by what it does), ENDPOINT BINDING (proving an off-chain endpoint belongs to an on-chain identity), and TRUST (a revocable vouching credential). This card provides exactly those three things and nothing else. A swarm is the same card with kind='swarm' and membership expressed as a token holding. See docs/agent-swarm-nexus-alignment-note.md.",
+  "version": "0.2.0",
+  "status": "draft",
+  "supersedesStandard": "agent.v0.1.0.json and the SwarmRegistration definition of swarm.v0.1.0.json (both retained for history)",
+  "designNote": "docs/agent-swarm-nexus-alignment-note.md",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB (system fields ~180 bytes, ~820 bytes for data). Detailed capability data (structured skills, IO modes, rate limits, model, pricing) lives in the OFF-CHAIN extended card referenced by card-uri and integrity-checked by card-hash -- the same body-off-chain/anchor-on-chain pattern as content.v0.2.0.",
+  "premise": {
+    "ownSigchain": "The agent authenticates with its own Nexus signature chain. Its genesis is the auto-assigned 'owner' of this asset, so agent identity needs no field here.",
+    "nativeNotRedeclared": "Nexus natively provides: identity (genesis), human-readable naming (namespace::name), signing keys (crypto object register), token/NXS accounts, and settlement (conditional contracts / invoices). None of these are duplicated as fields.",
+    "sovereigntyConsequence": "A sovereign sigchain CANNOT be shut down by a third party. There is therefore no 'kill-switch' flag (v0.1.0's was unenforceable: only the asset owner could write it). The enforceable mechanism is the REVOCABLE OPERATING CREDENTIAL in 'credential' -- an authority stops vouching, and counterparties refuse to deal. Revocation is enforceable; a self-owned boolean is not.",
+    "spendingLimits": "v0.1.0's can-transact / can-sign / max-tx-value are dropped. An agent with its own sigchain can transact by definition, and Nexus cannot today enforce delegated spending caps (the Sigchain Ledger VM is roadmap). A real cap is achieved by FUNDING a dedicated account to the intended ceiling."
+  },
+  "nexusFields": [
+    { "name": "distordia-type", "type": "string", "value": "agent-card", "mutable": false, "maxlength": 16 },
+    { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+    { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+    { "name": "status", "type": "string", "value": "active", "mutable": true, "maxlength": 10 },
+    { "name": "kind", "type": "string", "value": "agent", "mutable": false, "maxlength": 8 },
+    { "name": "agent", "type": "string", "value": "", "mutable": false, "maxlength": 64 },
+    { "name": "operator", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+    { "name": "caps", "type": "string", "value": "", "mutable": true, "maxlength": 160 },
+    { "name": "protocols", "type": "string", "value": "", "mutable": true, "maxlength": 32 },
+    { "name": "endpoint-a2a", "type": "string", "value": "", "mutable": true, "maxlength": 96 },
+    { "name": "endpoint-mcp", "type": "string", "value": "", "mutable": true, "maxlength": 96 },
+    { "name": "key-slot", "type": "string", "value": "sign", "mutable": true, "maxlength": 8 },
+    { "name": "pubkey", "type": "string", "value": "", "mutable": true, "maxlength": 72 },
+    { "name": "credential", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+    { "name": "members-token", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+    { "name": "card-uri", "type": "string", "value": "", "mutable": true, "maxlength": 96 },
+    { "name": "card-hash", "type": "string", "value": "", "mutable": true, "maxlength": 72 },
+    { "name": "supersedes", "type": "string", "value": "", "mutable": false, "maxlength": 56 }
+  ],
+  "fieldDefinitions": {
+    "distordia-type": { "description": "Asset type identifier. Must be 'agent-card'." },
+    "schema-ver": { "description": "Schema version of this record. '0.2.0'." },
+    "self-addr": { "description": "Queryable copy of this asset's own register address (the auto-assigned 'address' is not filterable in register/list). Stamped post-create." },
+    "status": { "description": "Card lifecycle state. Note this is the AGENT'S OWN declaration; independent trust comes from 'credential'.", "enum": ["active", "paused", "retired"] },
+    "kind": { "description": "Whether this card describes a single agent or a swarm (a collective). A swarm uses the same card and expresses membership via 'members-token'.", "enum": ["agent", "swarm"] },
+    "agent": {
+      "description": "Human-readable native Nexus name of this agent, normally a name inside the operator's namespace, e.g. 'acme.corp::logistics.agent01'. The cryptographic identity is the asset's own 'owner' genesis; this field is for resolution and display.",
+      "pattern": "^[a-z][a-z0-9.]{2,31}(::[a-z0-9.]{1,31})?$"
+    },
+    "operator": {
+      "description": "NAMESPACE of the organization that operates and vouches for this agent. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).",
+      "pattern": "^[a-z][a-z0-9.]{2,31}$"
+    },
+    "caps": { "description": "Comma-separated capability tags for DISCOVERY (e.g. 'route-optimization,dispatch,tracking'). Coarse by design -- structured skills with IO modes live in the off-chain card. This is the primary thing Nexus cannot provide: finding an agent by what it does." },
+    "protocols": { "description": "Comma-separated supported protocols (e.g. 'a2a,mcp')." },
+    "endpoint-a2a": { "description": "Agent-to-Agent protocol endpoint. Binding is proven by signing responses with the key in 'key-slot'/'pubkey' -- an unsigned endpoint claim is not evidence of control." },
+    "endpoint-mcp": { "description": "Model Context Protocol endpoint. Same signature-binding rule as endpoint-a2a." },
+    "key-slot": { "description": "Which slot of the agent sigchain's native CRYPTO OBJECT REGISTER is used to sign endpoint responses and A2A messages.", "enum": ["auth", "sign", "verify", "cert", "app1", "app2", "app3"] },
+    "pubkey": { "description": "Public key (or its hash) corresponding to 'key-slot', published so counterparties can verify signed messages and endpoint control without a prior relationship." },
+    "credential": { "description": "self-addr of a REVOCABLE operating credential/attestation issued by an authority (typically the operator or a Distordia attester). This is the enforceable safety mechanism replacing v0.1.0's kill-switch: a sovereign sigchain cannot be shut down, but vouching can be withdrawn. Consumers MUST check the credential is still valid, not merely that this card says 'active'." },
+    "members-token": { "description": "For kind='swarm': address of the token register whose holders ARE the members. Membership becomes countable, provable, and revocable on-chain -- replacing v0.1.0's 256-char pipe-separated 'members' string (which capped swarm size and proved nothing). Empty for kind='agent'." },
+    "card-uri": { "description": "Location of the extended off-chain agent card (ar:// / ipfs:// / https), holding structured skills, IO modes, rate limits, model details and pricing. Rate limits are advisory and enforced by the serving endpoint, never by the chain." },
+    "card-hash": { "description": "SHA-256 of the extended card for integrity ('sha256:...')." },
+    "supersedes": { "description": "self-addr of the prior card revision this replaces (append-only revision)." }
+  },
+  "required": ["distordia-type", "kind", "agent", "operator", "caps"],
+  "droppedFromV010": {
+    "_comment": "Fields deliberately removed because a sigchain-owning agent makes them redundant or unenforceable.",
+    "agent-id + namespace": "Replaced by the native namespace::name in 'agent' plus the owner genesis.",
+    "can-transact / can-sign": "An agent with its own sigchain can transact and sign by definition.",
+    "max-tx-value": "Not chain-enforceable as an integer. Fund a dedicated account to the intended ceiling instead.",
+    "kill-switch / kill-auth": "Unenforceable: only the asset owner can write its own asset. Replaced by the revocable 'credential'.",
+    "rate-rpm / rate-rpd": "Inherently off-chain and advisory; moved to the extended card.",
+    "created-ts": "Duplicates the platform-assigned 'created' system attribute.",
+    "model / context-window": "Moved to the extended off-chain card.",
+    "swarm-id / swarm-role / member-count / members / stake / missions-done / missions-failed / reputation": "Swarm registration is absorbed here via kind='swarm' + members-token. Counters and reputation must be DERIVED by querying agreement assets, not self-asserted."
+  },
+  "examples": [
+    {
+      "_comment": "An autonomous agent with its own sigchain, operated by acme.corp.",
+      "address": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "owner": "c4f0a911bcd433c5e47fe6d07bbb13f01f6899eb3d3fc43f8dee75dfad1f2a71",
+      "version": 2,
+      "created": 1755775754,
+      "modified": 1755779999,
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "agent-card",
+      "schema-ver": "0.2.0",
+      "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
+      "status": "active",
+      "kind": "agent",
+      "agent": "acme.corp::logistics.agent01",
+      "operator": "acme.corp",
+      "caps": "route-optimization,dispatch,tracking,inventory-check",
+      "protocols": "a2a,mcp",
+      "endpoint-a2a": "https://agents.acme.example/logistics01/a2a",
+      "endpoint-mcp": "https://agents.acme.example/logistics01/mcp",
+      "key-slot": "sign",
+      "pubkey": "a4f1c2d3e4b5968778899aabbccddeeff00112233445566778899aabbccddeeff",
+      "credential": "d4e5f6a7b8c9012345678901234567890123456789012345678901234567",
+      "card-uri": "ar://9kLmN2pQrS7tUvWxYz1aBcDeFgHiJkLmNoPqRsTuVwX",
+      "card-hash": "sha256:b2c3d4e5f6a7890123456789012345678901234567890123456789012345bcde"
+    },
+    {
+      "_comment": "A swarm: same card, kind='swarm', membership = holders of the swarm token.",
+      "address": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "agent-card",
+      "schema-ver": "0.2.0",
+      "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
+      "status": "active",
+      "kind": "swarm",
+      "agent": "acme.corp::logistics.fleet",
+      "operator": "acme.corp",
+      "caps": "delivery-fulfillment,route-optimization,tracking",
+      "protocols": "a2a",
+      "key-slot": "sign",
+      "members-token": "e5f6a7b8c9d0123456789012345678901234567890123456789012345678",
+      "card-uri": "ar://3pQrS7tUvWxYz1aBcDeFgHiJkLmNoPqRsTuVwX9kLmN2"
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON name={operator}::card.{agent-short} json='[...]'",
+    "stampSelfAddr": "assets/update/asset address=<returned-address> self-addr=\"<returned-address>\"",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilters": {
+      "discoverByCapability": "distordia-type = 'agent-card' AND status = 'active' AND caps LIKE '%route-optimization%'",
+      "swarmsOnly": "distordia-type = 'agent-card' AND kind = 'swarm'",
+      "byOperator": "distordia-type = 'agent-card' AND operator = '{namespace}'"
+    },
+    "verifyAgent": "1) resolve the card; 2) confirm the 'credential' asset is still valid (not revoked/expired); 3) challenge the endpoint and verify the signature against 'pubkey'. Do NOT trust 'status' alone -- it is self-declared."
+  },
+  "notes": [
+    "This standard exists because Nexus provides identity, ownership and settlement but NOT discovery, endpoint binding, or trust. Everything a sigchain already gives an agent has been removed.",
+    "Agent sovereignty is the key safety insight: an agent with its own sigchain cannot be switched off by anyone, so safety must be built on revocable vouching (credential), not on a self-owned flag.",
+    "Swarm registration is absorbed here (kind='swarm'); swarm MISSIONS move to the generic agreement standard (agreement.v0.2.0.json).",
+    "Track record and reputation are DERIVED by querying distordia-agreement assets where this agent is a party -- never stored as self-written counters.",
+    "Successor to agent.v0.1.0 (standards/agent-standard.json) and the SwarmRegistration half of swarm.v0.1.0 (standards/swarm-standard.json); both retained for history."
+  ]
+}
