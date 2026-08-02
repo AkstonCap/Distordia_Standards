@@ -151,13 +151,30 @@ The native register supplies **uniqueness, ownership, and transfer**; the Distor
 **trust metadata** (tier, stake, reputation, legal identity); external issuers supply **real-world
 verification**. Each layer does only what it can actually enforce.
 
-## 6. Repo-wide follow-up
+## 6. Repo-wide sweep (completed)
 
 The hyphen rule (N1) affects **every standard**, because namespace-valued fields appear throughout:
-`mfr`, `steward`, `supplier` (product), `author` (content/social/article), `driver`/`passenger`
-(NexGo), `namespace` (agent/swarm), `creator` (nft). All current examples use hyphenated values and
-must be re-cast to the legal `a.b` form. This is an examples/documentation sweep, not a schema
-change — tracked as a follow-up.
+`mfr`, `steward`, `supplier` (product), `author` (content/social/article), `driver`/`passenger`/
+`rater`/`ratee` (NexGo), `namespace`/`contractor`/`contractee`/`kill-auth` (agent/swarm),
+`creator` (nft). A repo-wide sweep has been applied:
+
+- **Example values corrected** to the legal `a.b` form (`acme-corp` → `acme.corp`,
+  `acme-industries` → `acme.industries`, `distordia-labs` → `distordia.labs`,
+  `john-driver` → `john.driver`, `premium-rides` → `premium.rides`,
+  `forge-manufacturing` → `forge.manufacturing`).
+- **Field definitions constrained**: every namespace-valued field now carries
+  `"pattern": "^[a-z][a-z0-9.]{2,31}$"` (comma-separated variant for `kill-auth`/`mentions`) plus an
+  explicit note that hyphens are invalid on-chain — so the rule is enforced at the schema, not just
+  illustrated in examples.
+- **Deliberately unconstrained:** `nft.creator`, which its own definition permits to be a free-text
+  display alias *or* a namespace; it carries the note without a hard pattern.
+- **Deliberately untouched:** v0.1.0 files that already have a v0.2.0 successor (namespace, content,
+  social, article, product, all three NexGo) are preserved as history — their successors carry the
+  fix. v0.1.0 files with **no** successor (agent, swarm, nft) were corrected, since they remain the
+  live guidance.
+- **Not swept:** identifier fields such as `agent-id`, `swarm-id`, `player-id` keep their
+  hyphen-permitting patterns. The verified character restriction applies to the **namespace**
+  segment; the rules for the *name* part after `::` were not verifiable during this review (see §7).
 
 ## 7. Open questions
 

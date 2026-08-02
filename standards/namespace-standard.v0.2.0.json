@@ -72,7 +72,7 @@
     "verified-ts": { "description": "Unix timestamp of initial verification." },
     "valid-until": { "description": "Unix timestamp of attestation expiration." },
     "protocols": { "description": "Comma-separated list of activated Distordia protocols." },
-    "parent": { "description": "Parent NAMESPACE for a sub-identity. Note that sub-identities are normally names INSIDE the parent namespace (e.g. 'acmecorp::logistics.agent01') and do not need their own namespace registration. Replaces v0.1.0's ad-hoc 'delegation-chain' string." },
+    "parent": { "description": "Parent NAMESPACE for a sub-identity. Note that sub-identities are normally names INSIDE the parent namespace (e.g. 'acmecorp::logistics.agent01') and do not need their own namespace registration. Replaces v0.1.0's ad-hoc 'delegation-chain' string. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
     "entity-type": { "description": "Type of entity.", "enum": ["individual", "organization", "enterprise", "agent", "swarm"] },
     "display-name": { "description": "Human-readable display name (may contain any characters, unlike the namespace itself)." },
     "description": { "description": "Brief description." },
@@ -83,7 +83,7 @@
     "slashing-events": { "description": "Number of slashing events." },
     "reputation": { "description": "Reputation score (0-1000). NOTE: per the market evaluation this should move to a provenance-bearing, third-party-attested primitive rather than a self-written counter." },
     "attestation-hash": { "description": "Hash of the off-chain attestation evidence (verification proofs) for integrity." },
-    "attester": { "description": "Namespace that issued this attestation (usually 'distordia', or a parent namespace for delegated sub-identities)." },
+    "attester": { "description": "Namespace that issued this attestation (usually 'distordia', or a parent namespace for delegated sub-identities). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
     "supersedes": { "description": "self-addr of the prior attestation this one replaces (e.g. re-issuance after a namespace transfer)." }
   },
   "required": ["distordia-type", "namespace", "name-category", "ns-addr", "ns-owner", "tier", "verified-ts", "valid-until", "attester"],

@@ -82,6 +82,7 @@ All Distordia assets live on the Nexus blockchain under these constraints:
 | Booleans | `uint8` with values `0` or `1` |
 | Timestamps | `uint64` Unix timestamps |
 | Addressing | Register `address` is auto-assigned but **not queryable**; assets mirror it into a `self-addr` field |
+| Namespace naming | Native Nexus namespaces are globally unique (1000 NXS) and allow **lowercase letters, digits and periods only — no hyphens** (`^[a-z][a-z0-9.]{2,31}$`) |
 | API | POST requests to `https://api.distordia.com` |
 
 **On-chain field format:**
@@ -160,7 +161,7 @@ The namespace standard is the foundation of the entire Distordia ecosystem. Ever
 
 | Field | Type | Mutable | Description |
 |-------|------|---------|-------------|
-| `namespace` | string | No | Unique identifier (`^[a-z][a-z0-9\-]{2,31}$`) |
+| `namespace` | string | No | Unique identifier — **Nexus-legal**: `^[a-z][a-z0-9.]{2,31}$` (lowercase, digits, periods; **no hyphens**) |
 | `tier` | string | Yes | Verification level (L0-L4) |
 | `stake` | uint64 | Yes | DIST tokens staked |
 | `entity-type` | string | No | `individual`, `organization`, `enterprise`, `agent`, `swarm` |
@@ -173,7 +174,7 @@ The namespace standard is the foundation of the entire Distordia ecosystem. Ever
 ```json
 {
   "distordia-type": "namespace",
-  "namespace": "acme-corp",
+  "namespace": "acme.corp",
   "tier": "L2",
   "stake": 2500,
   "entity-type": "organization",
@@ -428,7 +429,7 @@ Agents register on-chain with their capabilities, protocol endpoints, rate limit
 {
   "distordia-type": "agent",
   "agent-id": "logistics-coordinator-01",
-  "namespace": "acme-corp",
+  "namespace": "acme.corp",
   "agent-type": "autonomous",
   "status": "active",
   "caps": "route-optimization,dispatch,tracking",
@@ -568,7 +569,7 @@ Each taxi is a JSON-format asset that drivers create and continuously update wit
   "status": "available",
   "latitude": "40.712800",
   "longitude": "-74.006000",
-  "driver": "john-driver"
+  "driver": "john.driver"
 }
 ```
 

@@ -40,7 +40,7 @@
         "schema-ver": { "description": "Schema version. '0.2.0'." },
         "self-addr": { "description": "Queryable copy of this asset's register address." },
         "status": { "description": "Post status (unified vocabulary, replacing v0.1.0 'distordia-status').", "enum": ["official", "user", "deleted", "hidden"] },
-        "author": { "description": "Author NAMESPACE (attestable), replacing reliance on the raw owner genesis." },
+        "author": { "description": "Author NAMESPACE (attestable), replacing reliance on the raw owner genesis. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
         "text": { "description": "Post body, max 512 chars. Empty when the body is off-chain via 'cid'." },
         "cid": { "description": "Off-chain body CID (Arweave/IPFS) for posts longer than 512 chars; effectively a kind=article upgrade." },
         "hash": { "description": "SHA-256 of the body for integrity (so a post is verifiable like content)." },
@@ -51,7 +51,7 @@
         "media-uri": { "description": "Media location (https / ipfs:// / ar://)." },
         "media-hash": { "description": "SHA-256 of the media for integrity." },
         "tags": { "description": "Comma-separated hashtags (no #)." },
-        "mentions": { "description": "Comma-separated namespaces mentioned." },
+        "mentions": { "description": "Comma-separated namespaces mentioned. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}(,[a-z][a-z0-9.]{2,31})*$" },
         "lang": { "description": "ISO 639-1 language code." },
         "poll-q": { "description": "Poll question." },
         "poll-opts": { "description": "Pipe-separated poll options." },
@@ -75,8 +75,8 @@
         "distordia-type": { "description": "Must be 'distordia-follow'." },
         "schema-ver": { "description": "Schema version. '0.2.0'." },
         "self-addr": { "description": "Queryable copy of this asset's register address." },
-        "follower": { "description": "Following NAMESPACE (the asset owner)." },
-        "following": { "description": "Followed NAMESPACE." },
+        "follower": { "description": "Following NAMESPACE (the asset owner). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
+        "following": { "description": "Followed NAMESPACE. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
         "status": { "description": "Edge state.", "enum": ["active", "unfollowed", "blocked", "muted"] }
       },
       "required": ["distordia-type", "follower", "following"]
@@ -98,7 +98,7 @@
         "schema-ver": { "description": "Schema version. '0.2.0'." },
         "self-addr": { "description": "Queryable copy of this asset's register address." },
         "target": { "description": "self-addr of the post being reacted to." },
-        "reactor": { "description": "Reacting NAMESPACE." },
+        "reactor": { "description": "Reacting NAMESPACE. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
         "kind": { "description": "Reaction type.", "enum": ["like", "bookmark", "celebrate", "laugh", "sad", "angry"] },
         "status": { "description": "Reaction state.", "enum": ["active", "removed"] }
       },
@@ -134,7 +134,7 @@
       "schema-ver": "0.2.0",
       "self-addr": "92bFeRDWst5lg7GwwxhIEKCBMgAiv8cYUROlKTftH7X2Gip9Dny",
       "follower": "satoshi",
-      "following": "distordia-labs",
+      "following": "distordia.labs",
       "status": "active"
     }
   ],
