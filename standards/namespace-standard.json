@@ -3,6 +3,9 @@
   "title": "Distordia Namespace Attestation Standard",
   "description": "Schema for namespace attestation assets registered on the Nexus blockchain. Core identity primitive for all Distordia protocols.",
   "version": "0.1.0",
+  "deprecated": true,
+  "supersededBy": "namespace-standard.v0.2.0.json",
+  "supersededNote": "Bound to the NATIVE Nexus namespace register (ns-addr/ns-owner); namespace pattern corrected (Nexus forbids hyphens); delegation-chain dropped in favour of native namespaced names.",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [

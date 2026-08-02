@@ -3,6 +3,9 @@
   "title": "Distordia Content Verification Standard",
   "description": "Schema for content provenance assets registered on the Nexus blockchain. Used to verify authentic content and combat AI-generated misinformation.",
   "version": "0.1.0",
+  "deprecated": true,
+  "supersededBy": "content-standard.v0.2.0.json",
+  "supersededNote": "Unified provenance anchor: body off-chain via cid, on-chain cid+hash+phash+C2PA+ai-disclosure; now also covers native Distordia content (posts, articles).",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [

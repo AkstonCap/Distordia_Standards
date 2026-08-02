@@ -3,6 +3,9 @@
   "title": "NexGo Rating Standard",
   "description": "Schema for passenger-to-driver ratings stored as raw (state register) assets on the Nexus blockchain, used by the NexGo P2P ride-hailing module.",
   "version": "0.1.0",
+  "deprecated": true,
+  "supersededBy": "nexgo-rating-standard.v0.2.0.json",
+  "supersededNote": "One typed rating per ride, gated on a settled distordia-agreement (verified-ride gating), queryable per driver instead of a global raw scan.",
   "nexusFormat": "raw",
   "maxSize": "1KB",
   "dataFormat": {

@@ -3,6 +3,9 @@
   "title": "NexGo Taxi Standard",
   "description": "Schema for decentralized taxi assets on the Nexus blockchain, used by the NexGo P2P ride-hailing module.",
   "version": "0.1.0",
+  "deprecated": true,
+  "supersededBy": "nexgo-taxi-standard.v0.2.0.json",
+  "supersededNote": "Registration only: live GPS removed from chain (scale + permanent-location privacy); adds namespace driver identity, licence/insurance credential refs, coarse service-area geohash.",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [

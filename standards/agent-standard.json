@@ -3,6 +3,9 @@
   "title": "Distordia Agent Registration Standard",
   "description": "Schema for AI agent identity registration on the Nexus blockchain. Enables agent-to-agent trust verification and commerce.",
   "version": "0.1.0",
+  "deprecated": true,
+  "supersededBy": "agent-card-standard.v0.2.0.json",
+  "supersededNote": "CONSOLIDATED. Because a Distordia agent holds its OWN SIGCHAIN, identity/ownership/signing/transacting are native Nexus capabilities and were removed. The successor keeps only what Nexus cannot provide: capability DISCOVERY, ENDPOINT BINDING via the crypto object register (key-slot/pubkey), and a REVOCABLE operating credential. Dropped: agent-id+namespace, can-transact, can-sign, max-tx-value, kill-switch/kill-auth (unenforceable -- a sovereign sigchain cannot be shut down), rate limits, created-ts, model, context-window.",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [

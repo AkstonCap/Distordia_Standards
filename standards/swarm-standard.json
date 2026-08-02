@@ -3,6 +3,9 @@
   "title": "Distordia Swarm Coordination Standard",
   "description": "Schema for agent swarm registration and mission contracts on Nexus blockchain.",
   "version": "0.1.0",
+  "deprecated": true,
+  "supersededBy": "agent-card-standard.v0.2.0.json (SwarmRegistration) + agreement-standard.v0.2.0.json (MissionContract)",
+  "supersededNote": "SPLIT ACROSS TWO SUCCESSORS. Swarm registration becomes an agent-card with kind='swarm' and membership as a token holding (members-token) instead of a 256-char members string. Mission contracts become the generic request -> counterparty-signed offer -> terms-locked agreement, with custody delegated to native Nexus conditional contracts -- removing the custodial escrow integer, the 2% escrow fee and the 50 DIST dispute fee. missions-*/reputation are now DERIVED by querying settled agreements.",
   "definitions": {
     "SwarmRegistration": {
       "nexusFormat": "JSON",

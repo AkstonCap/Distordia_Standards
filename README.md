@@ -66,6 +66,27 @@ All web3 applications built by Distordia (and hopefully everyone else) follow th
 
 **Total: 12 standards, 15 asset types, ~235 field definitions** (every asset type carries a `self-addr` field — see [Blockchain Constraints](#blockchain-constraints))
 
+### v0.1.0 → v0.2.0 successor map
+
+Every v0.1.0 file below is **deprecated** (it carries `"deprecated": true` and a `supersededBy`
+pointer) and retained unchanged for history. Note that **agent** and **swarm** do not have
+same-named successors — they were consolidated, and swarm was split across two:
+
+| v0.1.0 standard | Superseded by | Nature of the change |
+|---|---|---|
+| `namespace-standard.json` | `namespace-standard.v0.2.0.json` | Bound to the native Nexus namespace register; hyphen-free pattern |
+| `content-standard.json` | `content-standard.v0.2.0.json` | Unified anchor; off-chain body + C2PA + AI disclosure |
+| `social-standard.json` | `social-standard.v0.2.0.json` | Adds follow graph + reactions |
+| `article-standard.json` | `article-standard.v0.2.0.json` | Off-chain body; hardened chunk fallback |
+| `product-standard.json` | `product-standard.v0.2.0.json` (+ `.solana.json`) | Minimal base identity layer + companion layers |
+| `agent-standard.json` | **`agent-card-standard.v0.2.0.json`** | **Consolidated** — agent holds its own sigchain, so only discovery / endpoint binding / revocable trust remain |
+| `swarm-standard.json` | **`agent-card-standard.v0.2.0.json`** (registration) **+ `agreement-standard.v0.2.0.json`** (missions) | **Split** — swarm becomes `kind:"swarm"` with token membership; missions become the generic agreement with native conditional-contract custody |
+| `nexgo-taxi-standard.json` | `nexgo-taxi-standard.v0.2.0.json` | Registration only; GPS off-chain |
+| `nexgo-ride-standard.json` | `nexgo-ride-standard.v0.2.0.json` + `agreement-standard.v0.2.0.json` | Domain request profile only; shared offer/agreement |
+| `nexgo-rating-standard.json` | `nexgo-rating-standard.v0.2.0.json` | Verified-ride gated, typed, per-driver queryable |
+| `nft-standard.json` | *(none yet)* | Market-evaluation recommendations only |
+| `player-standard.json` | *(none yet)* | Market-evaluation recommendations only |
+
 ---
 
 ## Blockchain Constraints

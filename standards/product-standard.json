@@ -3,6 +3,9 @@
   "title": "Distordia Product Masterdata Standard",
   "description": "Schema for product catalog assets registered on the Nexus blockchain. Based on GS1/ISO standards for supply chain traceability.",
   "version": "0.1.0",
+  "deprecated": true,
+  "supersededBy": "product-standard.v0.2.0.json",
+  "supersededNote": "Minimal base identity layer (adds mpn, mat-type, base-uom, rev, steward); relational MRP data moves to companion layers. A Solana realization exists as product-standard.v0.2.0.solana.json.",
   "nexusFormat": "JSON",
   "maxSize": "1KB (system fields use ~180 bytes, ~820 bytes available for data)",
   "nexusFields": [
