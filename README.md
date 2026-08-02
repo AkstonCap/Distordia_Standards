@@ -47,6 +47,8 @@ All web3 applications built by Distordia (and hopefully everyone else) follow th
 
 ## Standards at a Glance
 
+> **Market evaluation:** [Distordia Standards vs. Market Needs](docs/standards-market-evaluation.md) — a production-readiness and competitive-fit review of all non-product standards (vs. DID/VC, C2PA, ActivityPub/Nostr/Farcaster, Metaplex/EIP-2981, A2A/ERC-8004, Olas, and more). The product standard has its own [deep-dive](docs/product-masterdata-mrp-analysis.md). Cluster design notes: [Content & Publishing](docs/content-cluster-design-note.md) (Content · Articles · Social) and [NexGo Mobility](docs/nexgo-cluster-design-note.md) (Taxi · Ride · Rating).
+
 | # | Standard | File | Type Identifier | Fields | Purpose |
 |---|----------|------|-----------------|--------|---------|
 | 1 | [Namespace Attestation](#1-namespace-attestation) | [`namespace-standard.json`](standards/namespace-standard.json) | `namespace` | 21 | Identity, trust, and delegation |
@@ -80,6 +82,7 @@ All Distordia assets live on the Nexus blockchain under these constraints:
 | Booleans | `uint8` with values `0` or `1` |
 | Timestamps | `uint64` Unix timestamps |
 | Addressing | Register `address` is auto-assigned but **not queryable**; assets mirror it into a `self-addr` field |
+| Namespace naming | Native Nexus namespaces are globally unique (1000 NXS) and allow **lowercase letters, digits and periods only — no hyphens** (`^[a-z][a-z0-9.]{2,31}$`) |
 | API | POST requests to `https://api.distordia.com` |
 
 **On-chain field format:**
@@ -147,11 +150,18 @@ Higher tiers unlock more capabilities: sub-namespaces, delegation, SLA guarantee
 
 The namespace standard is the foundation of the entire Distordia ecosystem. Every organization, individual, agent, or swarm must first establish a verified namespace before registering other assets.
 
+> ⚠️ **Nexus alignment (important):** Nexus already provides a native, globally-unique, transferable
+> **namespace object register** (1000 NXS anti-squatting fee), and it permits **only lowercase
+> letters, numbers, and periods — no hyphens**. v0.1.0 re-implements namespaces as an unenforced
+> string and uses hyphenated examples that are *unregistrable on-chain*. See the
+> [Nexus alignment note](docs/namespace-nexus-alignment-note.md) and the corrected
+> [`namespace-standard.v0.2.0.json`](standards/namespace-standard.v0.2.0.json).
+
 **Key fields:**
 
 | Field | Type | Mutable | Description |
 |-------|------|---------|-------------|
-| `namespace` | string | No | Unique identifier (`^[a-z][a-z0-9\-]{2,31}$`) |
+| `namespace` | string | No | Unique identifier — **Nexus-legal**: `^[a-z][a-z0-9.]{2,31}$` (lowercase, digits, periods; **no hyphens**) |
 | `tier` | string | Yes | Verification level (L0-L4) |
 | `stake` | uint64 | Yes | DIST tokens staked |
 | `entity-type` | string | No | `individual`, `organization`, `enterprise`, `agent`, `swarm` |
@@ -164,7 +174,7 @@ The namespace standard is the foundation of the entire Distordia ecosystem. Ever
 ```json
 {
   "distordia-type": "namespace",
-  "namespace": "acme-corp",
+  "namespace": "acme.corp",
   "tier": "L2",
   "stake": 2500,
   "entity-type": "organization",
@@ -419,7 +429,7 @@ Agents register on-chain with their capabilities, protocol endpoints, rate limit
 {
   "distordia-type": "agent",
   "agent-id": "logistics-coordinator-01",
-  "namespace": "acme-corp",
+  "namespace": "acme.corp",
   "agent-type": "autonomous",
   "status": "active",
   "caps": "route-optimization,dispatch,tracking",
@@ -559,7 +569,7 @@ Each taxi is a JSON-format asset that drivers create and continuously update wit
   "status": "available",
   "latitude": "40.712800",
   "longitude": "-74.006000",
-  "driver": "john-driver"
+  "driver": "john.driver"
 }
 ```
 
@@ -739,9 +749,12 @@ Distordia_Standards/
   README.md                              # This file
   LICENSE                                # MIT License
   standards/
-    namespace-standard.json              # Identity and trust (21 fields)
-    content-standard.json                # Content provenance (14 fields)
-    social-standard.json                 # Social media posts (20 fields)
+    namespace-standard.json              # Identity and trust v0.1.0 (21 fields)
+    namespace-standard.v0.2.0.json       # Namespace v0.2.0 draft (bound to native Nexus namespace register)
+    content-standard.json                # Content provenance v0.1.0 (14 fields)
+    content-standard.v0.2.0.json         # Content v0.2.0 unified anchor draft (off-chain body + C2PA)
+    social-standard.json                 # Social media posts v0.1.0 (20 fields)
+    social-standard.v0.2.0.json          # Social v0.2.0 draft (+ follow graph + reactions)
     product-standard.json                # Product masterdata v0.1.0 (25 fields)
     product-standard.v0.2.0.json         # Product masterdata v0.2.0 base-layer draft (24 fields)
     product-standard.v0.2.0.solana.json  # Product masterdata v0.2.0 on Solana (same schema, Borsh PDA)
@@ -749,11 +762,22 @@ Distordia_Standards/
     player-standard.json                 # Fantasy football (31 fields)
     agent-standard.json                  # AI agent registry (25 fields)
     swarm-standard.json                  # Swarm + missions (18 + 26 fields)
-    article-standard.json               # Long-form articles (11 + 5 fields)
-    nexgo-taxi-standard.json            # NexGo taxi registry (9 fields)
-    nexgo-rating-standard.json          # NexGo passenger ratings (raw, 3 fields)
-    nexgo-ride-standard.json            # NexGo ride requests (raw, 9 fields)
+    article-standard.json               # Long-form articles v0.1.0 (11 + 5 fields)
+    article-standard.v0.2.0.json        # Articles v0.2.0 draft (off-chain body + hardened chunk fallback)
+    nexgo-taxi-standard.json            # NexGo taxi registry v0.1.0 (9 fields)
+    nexgo-taxi-standard.v0.2.0.json     # NexGo taxi v0.2.0 draft (GPS off-chain, compliance creds)
+    nexgo-rating-standard.json          # NexGo passenger ratings v0.1.0 (raw, 3 fields)
+    nexgo-rating-standard.v0.2.0.json   # NexGo rating v0.2.0 draft (verified-ride gated, typed)
+    nexgo-ride-standard.json            # NexGo ride requests v0.1.0 (raw, 9 fields)
+    nexgo-ride-standard.v0.2.0.json     # NexGo ride v0.2.0 draft (request/offer/agreement, driver-signed)
 ```
+
+> **v0.2.0 drafts** implement the redesigns from the cluster design notes
+> ([content](docs/content-cluster-design-note.md), [NexGo](docs/nexgo-cluster-design-note.md)) and
+> the [product MRP analysis](docs/product-masterdata-mrp-analysis.md), plus the
+> [Nexus namespace alignment note](docs/namespace-nexus-alignment-note.md). Each keeps its v0.1.0
+> file unchanged for history. The remaining standards (agent, swarm, nft, player) have
+> [market-evaluation](docs/standards-market-evaluation.md) recommendations but no v0.2.0 draft yet.
 
 ---
 

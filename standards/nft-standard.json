@@ -47,7 +47,7 @@
       "description": "Collection name to group related NFTs."
     },
     "creator": {
-      "description": "Creator name, alias, or namespace. Establishes provenance."
+      "description": "Creator name, alias, or namespace. Establishes provenance. If a NAMESPACE is used (rather than a display alias), Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain)."
     },
     "external_url": {
       "description": "External link for additional context (artist portfolio, project page, etc.)."

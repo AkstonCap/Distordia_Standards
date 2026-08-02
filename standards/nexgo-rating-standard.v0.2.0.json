@@ -1,0 +1,89 @@
+{
+  "$id": "https://distordia.com/standards/nexgo-rating.v0.2.0.json",
+  "title": "NexGo Rating Standard (v0.2.0 draft)",
+  "description": "Successor draft to nexgo-rating.v0.1.0. Replaces the per-passenger raw blob (which allowed rating anyone and required a global raw scan to read) with ONE typed rating asset per completed ride, GATED on a nexgo-ride-agreement self-addr (verified-ride gating) and queryable per driver. See docs/nexgo-cluster-design-note.md.",
+  "version": "0.2.0",
+  "status": "draft",
+  "supersedesStandard": "nexgo-rating.v0.1.0.json (retained as standards/nexgo-rating-standard.json)",
+  "designNote": "docs/nexgo-cluster-design-note.md",
+  "nexusFormat": "JSON",
+  "maxSize": "1KB (system fields ~180 bytes, ~820 bytes for data).",
+  "nexusFields": [
+    { "name": "distordia-type", "type": "string", "value": "nexgo-rating", "mutable": false, "maxlength": 16 },
+    { "name": "schema-ver", "type": "string", "value": "0.2.0", "mutable": false, "maxlength": 8 },
+    { "name": "self-addr", "type": "string", "value": "", "mutable": true, "maxlength": 56 },
+    { "name": "agreement", "type": "string", "value": "", "mutable": false, "maxlength": 56 },
+    { "name": "rater", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+    { "name": "ratee", "type": "string", "value": "", "mutable": false, "maxlength": 32 },
+    { "name": "score", "type": "uint8", "value": 0, "mutable": false },
+    { "name": "safety", "type": "uint8", "value": 0, "mutable": false },
+    { "name": "cleanliness", "type": "uint8", "value": 0, "mutable": false },
+    { "name": "driving", "type": "uint8", "value": 0, "mutable": false },
+    { "name": "avoid", "type": "uint8", "value": 0, "mutable": false },
+    { "name": "comment", "type": "string", "value": "", "mutable": false, "maxlength": 160 },
+    { "name": "status", "type": "string", "value": "active", "mutable": true, "maxlength": 10 }
+  ],
+  "fieldDefinitions": {
+    "distordia-type": { "description": "Must be 'nexgo-rating'." },
+    "schema-ver": { "description": "Schema version. '0.2.0'." },
+    "self-addr": { "description": "Queryable copy of this asset's register address." },
+    "agreement": { "description": "self-addr of the completed nexgo-ride-agreement this rating is for. The verified-ride gate: a rating is only valid if it references a real, completed agreement whose passenger == rater and driver == ratee." },
+    "rater": { "description": "Rating party NAMESPACE (the passenger of the agreement). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
+    "ratee": { "description": "Rated party NAMESPACE (the driver of the agreement). Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
+    "score": { "description": "Overall rating, 1 (worst) to 5 (best)." },
+    "safety": { "description": "Optional sub-score 1-5 (0 = not given)." },
+    "cleanliness": { "description": "Optional sub-score 1-5 (0 = not given)." },
+    "driving": { "description": "Optional sub-score 1-5 (0 = not given)." },
+    "avoid": { "description": "If 1, the rater flags this driver as 'to be avoided'." },
+    "comment": { "description": "Optional short free-text review." },
+    "status": { "description": "Rating state.", "enum": ["active", "retracted"] }
+  },
+  "required": ["distordia-type", "agreement", "rater", "ratee", "score"],
+  "naming": { "pattern": "nexgo-rating-{agreement-short}", "description": "One rating per completed ride agreement." },
+  "aggregation": {
+    "description": "Per-driver stats are computed by querying ratings WHERE ratee = '{driver}' AND status = 'active', after verifying each references a valid completed agreement.",
+    "computedFields": {
+      "average": "Mean overall score for a driver",
+      "count": "Number of verified ratings",
+      "avoidCount": "Number of 'avoid' flags"
+    }
+  },
+  "examples": [
+    {
+      "_comment": "A verified rating tied to a completed ride agreement.",
+      "address": "c3e9d800gfg433c4e36fd6c96aaa02ef0e5788da2c2eb32e7cdd64cefc0e1f71",
+      "owner": "a1c9b698edf211a2c14db4a74888f0cd9d4677c9b1da21d6fbcc53bdebb0d860",
+      "version": 1,
+      "created": 1769990600,
+      "modified": 1769990600,
+      "type": "OBJECT",
+      "form": "ASSET",
+      "distordia-type": "nexgo-rating",
+      "schema-ver": "0.2.0",
+      "self-addr": "c3e9d800gfg433c4e36fd6c96aaa02ef0e5788da2c2eb32e7cdd64cefc0e1f71",
+      "agreement": "d4e5f6a7b8c9012345678901234567890123456789012345678901234567",
+      "rater": "alice",
+      "ratee": "john.driver",
+      "score": 5,
+      "safety": 5,
+      "cleanliness": 4,
+      "driving": 5,
+      "avoid": 0,
+      "comment": "Smooth ride, friendly driver.",
+      "status": "active"
+    }
+  ],
+  "nexus": {
+    "format": "JSON",
+    "createCommand": "assets/create/asset format=JSON name=nexgo-rating-{agreement-short} json='[...]'",
+    "stampSelfAddr": "assets/update/asset address=<returned-address> self-addr=\"<returned-address>\"",
+    "queryEndpoint": "register/list/assets:asset",
+    "queryFilter": "distordia-type = 'nexgo-rating' AND ratee = '{driver namespace}' AND status = 'active'"
+  },
+  "notes": [
+    "Verified-ride gating: a rating must reference a completed nexgo-ride-agreement -- you can no longer rate a driver you never rode with (the core v0.1.0 weakness).",
+    "Typed JSON + per-ratee query replaces the v0.1.0 global raw scan, which did not scale.",
+    "One rating asset per ride (on the passenger's sigchain), not one growing blob per passenger.",
+    "Successor draft to nexgo-rating.v0.1.0 (standards/nexgo-rating-standard.json), retained for history."
+  ]
+}

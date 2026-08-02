@@ -41,7 +41,7 @@
       "description": "Unique agent identifier.",
       "pattern": "^[a-z][a-z0-9\\-]{2,63}$"
     },
-    "namespace": { "description": "Parent namespace that owns this agent." },
+    "namespace": { "description": "Parent namespace that owns this agent. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}$" },
     "agent-type": {
       "description": "Agent classification.",
       "enum": ["autonomous", "supervised", "tool", "swarm-member", "orchestrator"]
@@ -59,7 +59,7 @@
     "rate-rpm": { "description": "Rate limit: requests per minute." },
     "rate-rpd": { "description": "Rate limit: requests per day." },
     "kill-switch": { "description": "Kill switch enabled (0=no, 1=yes). Default: 1." },
-    "kill-auth": { "description": "Comma-separated namespaces authorized to trigger kill switch." },
+    "kill-auth": { "description": "Comma-separated namespaces authorized to trigger kill switch. Nexus namespace rules apply: lowercase letters, numbers and periods only (hyphens are INVALID on-chain).", "pattern": "^[a-z][a-z0-9.]{2,31}(,[a-z][a-z0-9.]{2,31})*$" },
     "endpoint-a2a": { "description": "Agent-to-Agent protocol endpoint URL." },
     "endpoint-mcp": { "description": "Model Context Protocol endpoint URL." },
     "endpoint-health": { "description": "Health check endpoint URL." },
@@ -87,7 +87,7 @@
       "distordia-type": "agent",
       "self-addr": "87aDdQCVrs4kf6FvffvgoHDJBLfAhu7bXSNkJResG6W1Fho8Cmx",
       "agent-id": "logistics-coordinator-01",
-      "namespace": "acme-corp",
+      "namespace": "acme.corp",
       "agent-type": "autonomous",
       "status": "active",
       "caps": "route-optimization,dispatch,tracking,inventory-check",
@@ -99,7 +99,7 @@
       "rate-rpm": 100,
       "rate-rpd": 10000,
       "kill-switch": 1,
-      "kill-auth": "acme-corp,distordia",
+      "kill-auth": "acme.corp,distordia",
       "endpoint-a2a": "https://agents.acme-corp.example/logistics-01/a2a",
       "endpoint-mcp": "https://agents.acme-corp.example/logistics-01/mcp",
       "endpoint-health": "https://agents.acme-corp.example/logistics-01/health",
