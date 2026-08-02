@@ -149,6 +149,13 @@ Higher tiers unlock more capabilities: sub-namespaces, delegation, SLA guarantee
 
 The namespace standard is the foundation of the entire Distordia ecosystem. Every organization, individual, agent, or swarm must first establish a verified namespace before registering other assets.
 
+> ⚠️ **Nexus alignment (important):** Nexus already provides a native, globally-unique, transferable
+> **namespace object register** (1000 NXS anti-squatting fee), and it permits **only lowercase
+> letters, numbers, and periods — no hyphens**. v0.1.0 re-implements namespaces as an unenforced
+> string and uses hyphenated examples that are *unregistrable on-chain*. See the
+> [Nexus alignment note](docs/namespace-nexus-alignment-note.md) and the corrected
+> [`namespace-standard.v0.2.0.json`](standards/namespace-standard.v0.2.0.json).
+
 **Key fields:**
 
 | Field | Type | Mutable | Description |
@@ -741,7 +748,8 @@ Distordia_Standards/
   README.md                              # This file
   LICENSE                                # MIT License
   standards/
-    namespace-standard.json              # Identity and trust (21 fields)
+    namespace-standard.json              # Identity and trust v0.1.0 (21 fields)
+    namespace-standard.v0.2.0.json       # Namespace v0.2.0 draft (bound to native Nexus namespace register)
     content-standard.json                # Content provenance v0.1.0 (14 fields)
     content-standard.v0.2.0.json         # Content v0.2.0 unified anchor draft (off-chain body + C2PA)
     social-standard.json                 # Social media posts v0.1.0 (20 fields)
@@ -765,8 +773,9 @@ Distordia_Standards/
 
 > **v0.2.0 drafts** implement the redesigns from the cluster design notes
 > ([content](docs/content-cluster-design-note.md), [NexGo](docs/nexgo-cluster-design-note.md)) and
-> the [product MRP analysis](docs/product-masterdata-mrp-analysis.md). Each keeps its v0.1.0 file
-> unchanged for history. The remaining standards (namespace, agent, swarm, nft, player) have
+> the [product MRP analysis](docs/product-masterdata-mrp-analysis.md), plus the
+> [Nexus namespace alignment note](docs/namespace-nexus-alignment-note.md). Each keeps its v0.1.0
+> file unchanged for history. The remaining standards (agent, swarm, nft, player) have
 > [market-evaluation](docs/standards-market-evaluation.md) recommendations but no v0.2.0 draft yet.
 
 ---
